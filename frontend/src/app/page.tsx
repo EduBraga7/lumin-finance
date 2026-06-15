@@ -4,6 +4,8 @@ import { useEffect, useState, useCallback } from 'react';
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from 'recharts';
 import { LayoutDashboard } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
+import { useDateFilter } from '@/context/DateFilterContext';
+import MonthSelector from '@/components/MonthSelector';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 
@@ -21,11 +23,12 @@ export default function Home() {
   const [loading, setLoading] = useState(true);
 
   const { session } = useAuth();
+  const { month, year } = useDateFilter();
 
   const fetchDashboard = useCallback(async () => {
     if (!session?.access_token) return;
     try {
-      const res = await fetch(`${API_URL}/api/transactions/dashboard`, {
+      const res = await fetch(`${API_URL}/api/transactions/dashboard?month=${month}&year=${year}`, {
         headers: {
           'Authorization': `Bearer ${session.access_token}`
         }
@@ -37,7 +40,7 @@ export default function Home() {
     } finally {
       setLoading(false);
     }
-  }, [session]);
+  }, [session, month, year]);
 
   useEffect(() => {
     fetchDashboard();

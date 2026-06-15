@@ -13,6 +13,7 @@ const geistMono = Geist_Mono({
 });
 
 import { AuthProvider } from "@/context/AuthContext";
+import { DateFilterProvider } from '@/context/DateFilterContext';
 import AppLayoutWrapper from "@/components/AppLayoutWrapper";
 
 export const metadata: Metadata = {
@@ -29,7 +30,9 @@ export default function RootLayout({
     <html lang="pt-BR">
       <body>
         <AuthProvider>
-          <AppLayoutWrapper>{children}</AppLayoutWrapper>
+          <DateFilterProvider>
+            <AppLayoutWrapper>{children}</AppLayoutWrapper>
+          </DateFilterProvider>
         </AuthProvider>
       </body>
     </html>

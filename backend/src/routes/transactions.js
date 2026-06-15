@@ -27,15 +27,29 @@ const requireAuth = (req, res, next) => {
   }
 };
 
+// Helper para filtro de data
+const applyDateFilter = (query, month, year) => {
+  if (month && year) {
+    const startDate = new Date(year, month - 1, 1).toISOString();
+    const endDate = new Date(year, month, 0, 23, 59, 59, 999).toISOString();
+    return query.gte('date', startDate).lte('date', endDate);
+  }
+  return query;
+};
+
 // GET /api/transactions
 router.get('/', requireAuth, async (req, res) => {
-  const { data, error } = await req.supabase
+  const { month, year } = req.query;
+  let query = req.supabase
     .from('transactions')
     .select('*')
-    .eq('user_id', req.user.id) // Reforço de segurança além do RLS
+    .eq('user_id', req.user.id)
     .order('date', { ascending: false })
     .order('created_at', { ascending: false });
 
+  query = applyDateFilter(query, month, year);
+
+  const { data, error } = await query;
   if (error) return res.status(500).json({ error: error.message });
   res.json(data);
 });
@@ -66,6 +80,24 @@ router.post('/', requireAuth, async (req, res) => {
   res.status(201).json(data[0]);
 });
 
+// PUT /api/transactions/:id
+router.put('/:id', requireAuth, async (req, res) => {
+  const { id } = req.params;
+  const { title, amount, type, category, date } = req.body;
+
+  const { data, error } = await req.supabase
+    .from('transactions')
+    .update({ title, amount, type, category, date })
+    .eq('id', id)
+    .eq('user_id', req.user.id)
+    .select();
+
+  if (error) return res.status(500).json({ error: error.message });
+  if (data.length === 0) return res.status(404).json({ error: 'Transação não encontrada.' });
+
+  res.json(data[0]);
+});
+
 // DELETE /api/transactions/:id
 router.delete('/:id', requireAuth, async (req, res) => {
   const { id } = req.params;
@@ -85,11 +117,15 @@ router.delete('/:id', requireAuth, async (req, res) => {
 
 // GET /api/transactions/dashboard
 router.get('/dashboard', requireAuth, async (req, res) => {
-  const { data, error } = await req.supabase
+  const { month, year } = req.query;
+  let query = req.supabase
     .from('transactions')
     .select('*')
     .eq('user_id', req.user.id);
 
+  query = applyDateFilter(query, month, year);
+
+  const { data, error } = await query;
   if (error) return res.status(500).json({ error: error.message });
 
   let totalIncome = 0;

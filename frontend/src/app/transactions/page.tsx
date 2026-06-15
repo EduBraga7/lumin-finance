@@ -1,8 +1,10 @@
 "use client";
 
 import { useEffect, useState, useCallback } from 'react';
-import { Plus, Trash2, Activity, CreditCard, TrendingUp, Receipt } from 'lucide-react';
+import { Plus, Trash2, Activity, CreditCard, TrendingUp, Receipt, Edit2, X } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
+import { useDateFilter } from '@/context/DateFilterContext';
+import MonthSelector from '@/components/MonthSelector';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 
@@ -25,13 +27,15 @@ export default function TransactionsPage() {
   const [type, setType] = useState<'income' | 'expense'>('expense');
   const [category, setCategory] = useState('Geral');
   const [date, setDate] = useState('');
+  const [editingId, setEditingId] = useState<string | null>(null);
 
   const { session } = useAuth();
+  const { month, year } = useDateFilter();
 
   const fetchTransactions = useCallback(async () => {
     if (!session?.access_token) return;
     try {
-      const res = await fetch(`${API_URL}/api/transactions`, {
+      const res = await fetch(`${API_URL}/api/transactions?month=${month}&year=${year}`, {
         headers: {
           'Authorization': `Bearer ${session.access_token}`
         }
@@ -43,7 +47,7 @@ export default function TransactionsPage() {
     } finally {
       setLoading(false);
     }
-  }, [session]);
+  }, [session, month, year]);
 
   useEffect(() => {
     fetchTransactions();
@@ -52,8 +56,11 @@ export default function TransactionsPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const res = await fetch(`${API_URL}/api/transactions`, {
-        method: 'POST',
+      const url = editingId ? `${API_URL}/api/transactions/${editingId}` : `${API_URL}/api/transactions`;
+      const method = editingId ? 'PUT' : 'POST';
+
+      const res = await fetch(url, {
+        method,
         headers: { 
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${session?.access_token}`
@@ -61,8 +68,7 @@ export default function TransactionsPage() {
         body: JSON.stringify({ title, amount: parseFloat(amount), type, category, date })
       });
       if (res.ok) {
-        setTitle('');
-        setAmount('');
+        cancelEdit();
         fetchTransactions();
       } else {
         const errData = await res.json();
@@ -71,6 +77,24 @@ export default function TransactionsPage() {
     } catch (err: any) {
       alert(`Erro na requisição: ${err.message || err}`);
     }
+  };
+
+  const handleEdit = (t: Transaction) => {
+    setEditingId(t.id);
+    setTitle(t.title);
+    setAmount(t.amount.toString());
+    setType(t.type);
+    setCategory(t.category);
+    setDate(t.date);
+  };
+
+  const cancelEdit = () => {
+    setEditingId(null);
+    setTitle('');
+    setAmount('');
+    setType('expense');
+    setCategory('Geral');
+    setDate('');
   };
 
   const handleDelete = async (id: string) => {
@@ -97,19 +121,25 @@ export default function TransactionsPage() {
 
   return (
     <div className="container">
-      <header className="header">
+      <header className="header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
         <h1>Lançamentos</h1>
+        <MonthSelector />
       </header>
 
       <div className="main-grid">
         {/* Formulário */}
         <div>
           <div className="glass-card" style={{ position: 'sticky', top: '2rem' }}>
-            <div className="card-header">
+            <div className="card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <h2 className="card-title">
-                <Plus size={20} className="text-accent" />
-                Nova Transação
+                {editingId ? <Edit2 size={20} className="text-accent" /> : <Plus size={20} className="text-accent" />}
+                {editingId ? 'Editar Lançamento' : 'Nova Transação'}
               </h2>
+              {editingId && (
+                <button type="button" onClick={cancelEdit} style={{ background: 'none', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer' }}>
+                  <X size={20} />
+                </button>
+              )}
             </div>
             
             <form onSubmit={handleSubmit}>
@@ -142,7 +172,7 @@ export default function TransactionsPage() {
               </div>
               
               <button type="submit" className="btn-primary">
-                Adicionar Lançamento
+                {editingId ? 'Salvar Alterações' : 'Adicionar Lançamento'}
               </button>
             </form>
           </div>
@@ -185,9 +215,14 @@ export default function TransactionsPage() {
                       <div className={`tx-amount ${t.type}`}>
                         {t.type === 'income' ? '+' : '-'} {formatCurrency(t.amount)}
                       </div>
-                      <button onClick={() => handleDelete(t.id)} className="btn-delete" title="Remover transação">
-                        <Trash2 size={16} />
-                      </button>
+                      <div style={{ display: 'flex', gap: '0.5rem' }}>
+                        <button onClick={() => handleEdit(t)} className="btn-icon" title="Editar transação" style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--text-secondary)' }}>
+                          <Edit2 size={16} />
+                        </button>
+                        <button onClick={() => handleDelete(t.id)} className="btn-delete" title="Remover transação">
+                          <Trash2 size={16} />
+                        </button>
+                      </div>
                     </div>
                   </div>
                 ))}

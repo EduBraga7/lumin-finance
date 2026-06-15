@@ -23,6 +23,7 @@ export default function BillsPage() {
   const [loading, setLoading] = useState(true);
   
   // Form state
+  const [billType, setBillType] = useState<'expense' | 'reminder'>('expense');
   const [title, setTitle] = useState('');
   const [amount, setAmount] = useState('');
   const [category, setCategory] = useState('Moradia');
@@ -69,9 +70,9 @@ export default function BillsPage() {
         },
         body: JSON.stringify({ 
           title, 
-          amount: parseFloat(amount) || 0, // permite valor 0 se nao souber o valor exato ainda
-          type: 'expense', 
-          category, 
+          amount: billType === 'reminder' ? 0 : (parseFloat(amount) || 0), 
+          type: billType, 
+          category: billType === 'reminder' ? 'Lembrete' : category, 
           date,
           is_paid: false, // Sempre pendente
           repeat_months: repeat && !editingId ? 12 : 1 
@@ -107,6 +108,7 @@ export default function BillsPage() {
 
   const handleEdit = (t: Transaction) => {
     setEditingId(t.id);
+    setBillType(t.type === 'reminder' ? 'reminder' : 'expense');
     setTitle(t.title);
     setAmount(t.amount.toString());
     setCategory(t.category);
@@ -116,6 +118,7 @@ export default function BillsPage() {
 
   const cancelEdit = () => {
     setEditingId(null);
+    setBillType('expense');
     setTitle('');
     setAmount('');
     setCategory('Moradia');
@@ -161,29 +164,42 @@ export default function BillsPage() {
       </div>
       
       <form onSubmit={(e) => { handleSubmit(e); setIsModalOpen(false); }}>
+        <div className="form-group" style={{ marginBottom: '1.5rem', display: 'flex', gap: '1rem' }}>
+          <button type="button" onClick={() => setBillType('expense')} style={{ flex: 1, padding: '0.8rem', borderRadius: '8px', border: '1px solid var(--border-subtle)', background: billType === 'expense' ? 'rgba(239, 68, 68, 0.1)' : 'var(--bg-base)', color: billType === 'expense' ? 'var(--color-expense)' : 'var(--text-secondary)', fontWeight: 600, cursor: 'pointer', transition: 'all 0.2s' }}>
+            💸 Despesa Real
+          </button>
+          <button type="button" onClick={() => setBillType('reminder')} style={{ flex: 1, padding: '0.8rem', borderRadius: '8px', border: '1px solid var(--border-subtle)', background: billType === 'reminder' ? 'rgba(59, 130, 246, 0.1)' : 'var(--bg-base)', color: billType === 'reminder' ? '#3b82f6' : 'var(--text-secondary)', fontWeight: 600, cursor: 'pointer', transition: 'all 0.2s' }}>
+            🔔 Apenas Aviso
+          </button>
+        </div>
+
         <div className="form-group">
-          <label className="form-label">Nome da Conta</label>
-          <input type="text" className="form-input" value={title} onChange={(e) => setTitle(e.target.value)} required placeholder="Ex: Internet, Luz, Cartão..." />
+          <label className="form-label">{billType === 'reminder' ? 'Nome do Lembrete' : 'Nome da Conta'}</label>
+          <input type="text" className="form-input" value={title} onChange={(e) => setTitle(e.target.value)} required placeholder={billType === 'reminder' ? 'Ex: Fatura do Cartão...' : 'Ex: Internet, Luz, Cartão...'} />
         </div>
         
-        <div className="form-group">
-          <label className="form-label">Valor Estimado (R$)</label>
-          <input type="number" step="0.01" className="form-input" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="0.00" />
-          <span style={{fontSize: '0.75rem', color: 'var(--text-secondary)'}}>Deixe em branco se não souber o valor ainda.</span>
-        </div>
-        
-        <div className="form-group">
-          <label className="form-label">Categoria</label>
-          <select className="form-input form-select" value={category} onChange={(e) => setCategory(e.target.value)} required>
-            <option value="Moradia">🏠 Moradia</option>
-            <option value="Alimentação">🍔 Alimentação</option>
-            <option value="Transporte">🚗 Transporte</option>
-            <option value="Lazer">🍿 Lazer</option>
-            <option value="Saúde">💊 Saúde</option>
-            <option value="Educação">📚 Educação</option>
-            <option value="Geral">📦 Geral</option>
-          </select>
-        </div>
+        {billType === 'expense' && (
+          <>
+            <div className="form-group">
+              <label className="form-label">Valor Estimado (R$)</label>
+              <input type="number" step="0.01" className="form-input" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="0.00" />
+              <span style={{fontSize: '0.75rem', color: 'var(--text-secondary)'}}>Deixe em branco se não souber o valor ainda.</span>
+            </div>
+            
+            <div className="form-group">
+              <label className="form-label">Categoria</label>
+              <select className="form-input form-select" value={category} onChange={(e) => setCategory(e.target.value)} required>
+                <option value="Moradia">🏠 Moradia</option>
+                <option value="Alimentação">🍔 Alimentação</option>
+                <option value="Transporte">🚗 Transporte</option>
+                <option value="Lazer">🍿 Lazer</option>
+                <option value="Saúde">💊 Saúde</option>
+                <option value="Educação">📚 Educação</option>
+                <option value="Geral">📦 Geral</option>
+              </select>
+            </div>
+          </>
+        )}
         
         <div className="form-group">
           <label className="form-label">Data de Vencimento</label>
@@ -199,8 +215,8 @@ export default function BillsPage() {
           </div>
         )}
         
-        <button type="submit" className="btn-primary" style={{ background: 'var(--color-expense)', color: '#fff' }}>
-          {editingId ? 'Salvar Alterações' : 'Agendar Conta'}
+        <button type="submit" className="btn-primary" style={{ background: billType === 'reminder' ? '#3b82f6' : 'var(--color-expense)', color: '#fff' }}>
+          {editingId ? 'Salvar Alterações' : (billType === 'reminder' ? 'Criar Aviso' : 'Agendar Conta')}
         </button>
       </form>
     </>
@@ -255,27 +271,27 @@ export default function BillsPage() {
                   const isOverdue = dueDate < today;
 
                   return (
-                    <div key={t.id} className="tx-item" style={{ borderLeft: isOverdue ? '4px solid var(--color-expense)' : '4px solid var(--accent-primary)', paddingLeft: '1rem' }}>
+                    <div key={t.id} className="tx-item" style={{ borderLeft: isOverdue ? '4px solid var(--color-expense)' : (t.type === 'reminder' ? '4px solid #3b82f6' : '4px solid var(--accent-primary)'), paddingLeft: '1rem' }}>
                       
                       <div className="tx-title-container" style={{ flex: 1 }}>
                         <div className="tx-title" style={{ color: isOverdue ? 'var(--color-expense)' : 'var(--text-primary)' }}>
-                          {t.title} {isOverdue && <span style={{ fontSize: '0.7rem', fontWeight: 600, color: 'var(--color-expense)' }}>(Atrasada)</span>}
+                          {t.type === 'reminder' ? '🔔 ' : ''}{t.title} {isOverdue && <span style={{ fontSize: '0.7rem', fontWeight: 600, color: 'var(--color-expense)' }}>(Atrasada)</span>}
                         </div>
                         <div className="tx-meta-container" style={{ marginTop: '0.2rem' }}>
-                          <span className="tx-category-badge">{t.category}</span>
+                          {t.type !== 'reminder' && <span className="tx-category-badge">{t.category}</span>}
                           <span>Vence: {new Date(t.date).toLocaleDateString('pt-BR')}</span>
                         </div>
                       </div>
 
                       <div className="tx-amount-container" style={{ marginRight: '1rem' }}>
-                        <div className="tx-amount" style={{ color: 'var(--color-expense)', fontSize: '1.1rem' }}>
-                          - {formatCurrency(t.amount)}
+                        <div className="tx-amount" style={{ color: t.type === 'reminder' ? '#3b82f6' : 'var(--color-expense)', fontSize: t.type === 'reminder' ? '0.9rem' : '1.1rem', fontWeight: t.type === 'reminder' ? 500 : 700 }}>
+                          {t.type === 'reminder' ? 'Aviso' : `- ${formatCurrency(t.amount)}`}
                         </div>
                       </div>
                       
                       <div className="tx-actions-container">
-                        <button onClick={() => handlePay(t.id)} title="Marcar como Pago" style={{ background: 'var(--color-expense)', color: 'white', border: 'none', padding: '0.4rem 0.8rem', borderRadius: '6px', fontSize: '0.8rem', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
-                          <CheckCircle size={14} /> Pagar
+                        <button onClick={() => handlePay(t.id)} title={t.type === 'reminder' ? "Marcar como Lida" : "Marcar como Pago"} style={{ background: t.type === 'reminder' ? '#3b82f6' : 'var(--color-expense)', color: 'white', border: 'none', padding: '0.4rem 0.8rem', borderRadius: '6px', fontSize: '0.8rem', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
+                          <CheckCircle size={14} /> {t.type === 'reminder' ? 'OK / Feito' : 'Pagar'}
                         </button>
                         <button onClick={() => handleEdit(t)} className="btn-icon" title="Editar conta" style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--text-secondary)', padding: '0.4rem' }}>
                           <Edit2 size={16} />

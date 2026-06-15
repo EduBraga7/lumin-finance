@@ -51,7 +51,7 @@ router.get('/', requireAuth, async (req, res) => {
     query = query.eq('is_paid', false);
   } else if (status === 'paid') {
     // Para retrocompatibilidade, vamos aceitar true ou nulo (já que antes não tinha a coluna)
-    query = query.neq('is_paid', false);
+    query = query.neq('is_paid', false).neq('type', 'reminder');
   }
 
   query = applyDateFilter(query, month, year);
@@ -185,7 +185,7 @@ router.get('/dashboard', requireAuth, async (req, res) => {
   });
 
   const pendingTransactions = data
-    .filter(t => t.type === 'expense' && t.is_paid === false)
+    .filter(t => (t.type === 'expense' || t.type === 'reminder') && t.is_paid === false)
     .sort((a, b) => new Date(a.date) - new Date(b.date));
 
   res.json({
@@ -211,6 +211,7 @@ router.get('/yearly', requireAuth, async (req, res) => {
     .select('amount, type, date, is_paid')
     .eq('user_id', req.user.id)
     .neq('is_paid', false)
+    .neq('type', 'reminder')
     .gte('date', startDate)
     .lte('date', endDate);
 

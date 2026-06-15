@@ -56,24 +56,38 @@ router.get('/', requireAuth, async (req, res) => {
 
 // POST /api/transactions
 router.post('/', requireAuth, async (req, res) => {
-  const { title, amount, type, category, date } = req.body;
+  const { title, amount, type, category, date, repeat_months } = req.body;
 
   if (!title || !amount || !type || !category) {
     return res.status(400).json({ error: 'Todos os campos obrigatórios devem ser preenchidos.' });
   }
 
+  const baseDateStr = date || new Date().toISOString().split('T')[0];
+  // Convertemos a string (YYYY-MM-DD) adicionando T00:00:00 para evitar bugs de fuso horário
+  const baseDate = new Date(`${baseDateStr}T12:00:00Z`);
+  
+  const monthsToRepeat = parseInt(repeat_months) || 1;
+  const maxMonths = Math.min(monthsToRepeat, 24); // Limita a 24 meses
+  
+  const insertPayloads = [];
+
+  for (let i = 0; i < maxMonths; i++) {
+    const targetDate = new Date(baseDate);
+    targetDate.setUTCMonth(targetDate.getUTCMonth() + i);
+    
+    insertPayloads.push({
+      title: i === 0 ? title : `${title} (${i+1}/${maxMonths})`,
+      amount,
+      type,
+      category,
+      date: targetDate.toISOString().split('T')[0],
+      user_id: req.user.id
+    });
+  }
+
   const { data, error } = await req.supabase
     .from('transactions')
-    .insert([
-      { 
-        title, 
-        amount, 
-        type, 
-        category, 
-        date: date || new Date().toISOString().split('T')[0],
-        user_id: req.user.id // Vincula a transação ao usuário logado
-      }
-    ])
+    .insert(insertPayloads)
     .select();
 
   if (error) return res.status(500).json({ error: error.message });

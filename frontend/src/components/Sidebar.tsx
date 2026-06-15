@@ -2,12 +2,34 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { LayoutDashboard, Receipt, LogOut, BarChart2 } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { LayoutDashboard, Receipt, LogOut, BarChart2, Sun, Moon } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 
 export default function Sidebar() {
   const pathname = usePathname();
   const { user, signOut } = useAuth();
+  const [theme, setTheme] = useState<'dark' | 'light'>('dark');
+
+  useEffect(() => {
+    const saved = localStorage.getItem('lumin_theme');
+    if (saved === 'light') {
+      setTheme('light');
+      document.body.classList.add('light-mode');
+    }
+  }, []);
+
+  const toggleTheme = () => {
+    if (theme === 'dark') {
+      setTheme('light');
+      document.body.classList.add('light-mode');
+      localStorage.setItem('lumin_theme', 'light');
+    } else {
+      setTheme('dark');
+      document.body.classList.remove('light-mode');
+      localStorage.setItem('lumin_theme', 'dark');
+    }
+  };
 
   return (
     <aside style={{ width: '250px', background: 'var(--surface)', padding: '2rem 1.5rem', display: 'flex', flexDirection: 'column', borderRight: '1px solid var(--border-subtle)' }}>
@@ -34,6 +56,10 @@ export default function Sidebar() {
         <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginBottom: '1rem', wordBreak: 'break-all' }}>
           Logado como:<br/><b>@{user?.username}</b>
         </div>
+        <button onClick={toggleTheme} className="nav-link" style={{ width: '100%', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-primary)', marginBottom: '0.5rem' }}>
+          {theme === 'dark' ? <Sun size={20} /> : <Moon size={20} />}
+          Modo {theme === 'dark' ? 'Claro' : 'Escuro'}
+        </button>
         <button onClick={signOut} className="nav-link" style={{ width: '100%', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-expense)' }}>
           <LogOut size={20} />
           Sair da conta

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from 'react';
-import { Plus, Trash2, Activity, CreditCard, TrendingUp, Receipt, Edit2, X } from 'lucide-react';
+import { Plus, Trash2, Activity, CreditCard, TrendingUp, Receipt, Edit2, X, Download } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { useDateFilter } from '@/context/DateFilterContext';
 import MonthSelector from '@/components/MonthSelector';
@@ -27,6 +27,7 @@ export default function TransactionsPage() {
   const [type, setType] = useState<'income' | 'expense'>('expense');
   const [category, setCategory] = useState('Geral');
   const [date, setDate] = useState('');
+  const [repeat, setRepeat] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
 
   const { session } = useAuth();
@@ -65,7 +66,14 @@ export default function TransactionsPage() {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${session?.access_token}`
         },
-        body: JSON.stringify({ title, amount: parseFloat(amount), type, category, date })
+        body: JSON.stringify({ 
+          title, 
+          amount: parseFloat(amount), 
+          type, 
+          category, 
+          date,
+          repeat_months: repeat && !editingId ? 12 : 1 
+        })
       });
       if (res.ok) {
         cancelEdit();
@@ -95,6 +103,7 @@ export default function TransactionsPage() {
     setType('expense');
     setCategory('Geral');
     setDate('');
+    setRepeat(false);
   };
 
   const handleDelete = async (id: string) => {
@@ -117,13 +126,36 @@ export default function TransactionsPage() {
     return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val);
   };
 
+  const exportCSV = () => {
+    if (transactions.length === 0) return alert('Nenhuma transação para exportar neste mês.');
+    const header = ['Data,Título,Categoria,Tipo,Valor(R$)'];
+    const rows = transactions.map(t => {
+      return `${t.date},"${t.title}",${t.category},${t.type === 'income' ? 'Receita' : 'Despesa'},${t.amount}`;
+    });
+    const csvString = [header, ...rows].join('\n');
+    const blob = new Blob([csvString], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', `lumin_finance_${month}_${year}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   if (loading) return <div style={{display: 'flex', height: '100vh', alignItems: 'center', justifyContent: 'center'}}>Carregando...</div>;
 
   return (
     <div className="container">
       <header className="header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
         <h1>Lançamentos</h1>
-        <MonthSelector />
+        <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', flexWrap: 'wrap' }}>
+          <button onClick={exportCSV} title="Baixar planilha" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', background: 'transparent', border: '1px solid var(--text-secondary)', padding: '0.5rem 1rem', borderRadius: '8px', color: 'var(--text-primary)', cursor: 'pointer' }}>
+            <Download size={18} />
+            Exportar CSV
+          </button>
+          <MonthSelector />
+        </div>
       </header>
 
       <div className="main-grid">
@@ -189,6 +221,15 @@ export default function TransactionsPage() {
                 <label className="form-label">Data</label>
                 <input type="date" className="form-input" value={date} onChange={(e) => setDate(e.target.value)} />
               </div>
+              
+              {!editingId && (
+                <div className="form-group" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1rem' }}>
+                  <input type="checkbox" id="repeatCheckbox" checked={repeat} onChange={(e) => setRepeat(e.target.checked)} style={{ width: '1.2rem', height: '1.2rem', cursor: 'pointer' }} />
+                  <label htmlFor="repeatCheckbox" style={{ cursor: 'pointer', color: 'var(--text-secondary)' }}>
+                    Repetir todo mês (1 ano)
+                  </label>
+                </div>
+              )}
               
               <button type="submit" className="btn-primary">
                 {editingId ? 'Salvar Alterações' : 'Adicionar Lançamento'}

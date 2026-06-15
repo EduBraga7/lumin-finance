@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { Wallet, LogIn, UserPlus } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+const API_URL = process.env.NEXT_PUBLIC_API_URL || (typeof window !== 'undefined' ? `http://${window.location.hostname}:3001` : 'http://localhost:3001');
 
 export default function LoginPage() {
   const [isLogin, setIsLogin] = useState(true);

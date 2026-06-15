@@ -44,7 +44,7 @@ export default function Sidebar() {
         </Link>
         <Link href="/transactions" className={`nav-link ${pathname === '/transactions' ? 'active' : ''}`}>
           <Receipt size={20} />
-          Lançamentos (Pagos)
+          Lançamentos
         </Link>
         <Link href="/bills" className={`nav-link ${pathname === '/bills' ? 'active' : ''}`}>
           <Calendar size={20} />

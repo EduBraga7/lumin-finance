@@ -83,7 +83,7 @@ router.post('/', requireAuth, async (req, res) => {
     targetDate.setUTCMonth(targetDate.getUTCMonth() + i);
     
     insertPayloads.push({
-      title: i === 0 ? title : `${title} (${i+1}/${maxMonths})`,
+      title: title,
       amount,
       type,
       category,

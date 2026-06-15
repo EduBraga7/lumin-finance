@@ -2,6 +2,7 @@
 
 import { usePathname } from 'next/navigation';
 import Sidebar from './Sidebar';
+import BottomNav from './BottomNav';
 import { useAuth } from '@/context/AuthContext';
 
 export default function AppLayoutWrapper({ children }: { children: React.ReactNode }) {
@@ -22,6 +23,7 @@ export default function AppLayoutWrapper({ children }: { children: React.ReactNo
       <main className="main-content-wrapper">
         {children}
       </main>
+      <BottomNav />
     </div>
   );
 }

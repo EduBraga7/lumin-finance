@@ -32,7 +32,7 @@ export default function Sidebar() {
   };
 
   return (
-    <aside style={{ width: '250px', background: 'var(--surface)', padding: '2rem 1.5rem', display: 'flex', flexDirection: 'column', borderRight: '1px solid var(--border-subtle)' }}>
+    <aside className="sidebar">
       <div style={{ marginBottom: '3rem' }}>
         <h2 style={{ fontSize: '1.5rem', fontWeight: 700, color: 'var(--text-primary)' }}>Lumin Finance</h2>
       </div>

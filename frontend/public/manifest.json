@@ -1,0 +1,21 @@
+{
+  "name": "Lumin Finance",
+  "short_name": "Lumin",
+  "description": "Gerenciador de finanças pessoais",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#050505",
+  "theme_color": "#050505",
+  "icons": [
+    {
+      "src": "/file.svg",
+      "sizes": "192x192",
+      "type": "image/svg+xml"
+    },
+    {
+      "src": "/file.svg",
+      "sizes": "512x512",
+      "type": "image/svg+xml"
+    }
+  ]
+}

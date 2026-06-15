@@ -131,9 +131,9 @@ export default function Home() {
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))', gap: '2rem', alignItems: 'start' }}>
         {/* IA Card */}
-        <div className="glass-card" style={{ background: 'linear-gradient(145deg, rgba(30,27,75,0.4) 0%, rgba(15,23,42,0.4) 100%)', border: '1px solid rgba(99,102,241,0.2)' }}>
+        <div className="glass-card ai-card">
         <div className="card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <h2 className="card-title" style={{ color: '#a5b4fc' }}>
+          <h2 className="card-title ai-card-title">
             <Sparkles size={20} />
             Conselheiro Financeiro (IA)
           </h2>

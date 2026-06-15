@@ -19,6 +19,21 @@ import AppLayoutWrapper from "@/components/AppLayoutWrapper";
 export const metadata: Metadata = {
   title: "Lumin Finance",
   description: "Gerenciador de finanças pessoais criado com Next.js",
+  manifest: "/manifest.json",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: "Lumin Finance",
+  },
+};
+
+export const viewport = {
+  themeColor: "#050505",
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
+  viewportFit: "cover",
 };
 
 export default function RootLayout({

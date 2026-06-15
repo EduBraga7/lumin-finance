@@ -29,6 +29,7 @@ export default function TransactionsPage() {
   const [date, setDate] = useState('');
   const [repeat, setRepeat] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
   const { session } = useAuth();
   const { month, year } = useDateFilter();
@@ -94,6 +95,7 @@ export default function TransactionsPage() {
     setType(t.type);
     setCategory(t.category);
     setDate(t.date);
+    setIsModalOpen(true);
   };
 
   const cancelEdit = () => {
@@ -104,6 +106,7 @@ export default function TransactionsPage() {
     setCategory('Geral');
     setDate('');
     setRepeat(false);
+    setIsModalOpen(false);
   };
 
   const handleDelete = async (id: string) => {
@@ -145,6 +148,84 @@ export default function TransactionsPage() {
 
   if (loading) return <div style={{display: 'flex', height: '100vh', alignItems: 'center', justifyContent: 'center'}}>Carregando...</div>;
 
+  const FormContent = () => (
+    <>
+      <div className="card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <h2 className="card-title">
+          {editingId ? <Edit2 size={20} className="text-accent" /> : <Plus size={20} className="text-accent" />}
+          {editingId ? 'Editar Lançamento' : 'Nova Transação'}
+        </h2>
+        {(editingId || isModalOpen) && (
+          <button type="button" onClick={cancelEdit} style={{ background: 'none', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer' }}>
+            <X size={20} />
+          </button>
+        )}
+      </div>
+      
+      <form onSubmit={(e) => { handleSubmit(e); setIsModalOpen(false); }}>
+        <div className="form-group">
+          <label className="form-label">Qual o título?</label>
+          <input type="text" className="form-input" value={title} onChange={(e) => setTitle(e.target.value)} required placeholder="Ex: Salário, Netflix..." />
+        </div>
+        
+        <div className="form-group">
+          <label className="form-label">Valor (R$)</label>
+          <input type="number" step="0.01" className="form-input" value={amount} onChange={(e) => setAmount(e.target.value)} required placeholder="0.00" />
+        </div>
+        
+        <div className="form-group">
+          <label className="form-label">Tipo de Lançamento</label>
+          <select className="form-input form-select" value={type} onChange={(e) => setType(e.target.value as 'income'|'expense')}>
+            <option value="expense">📉 Despesa</option>
+            <option value="income">📈 Receita</option>
+          </select>
+        </div>
+        
+        <div className="form-group">
+          <label className="form-label">Categoria</label>
+          <select className="form-input form-select" value={category} onChange={(e) => setCategory(e.target.value)} required>
+            {type === 'expense' ? (
+              <>
+                <option value="Alimentação">🍔 Alimentação</option>
+                <option value="Transporte">🚗 Transporte</option>
+                <option value="Moradia">🏠 Moradia</option>
+                <option value="Lazer">🍿 Lazer</option>
+                <option value="Saúde">💊 Saúde</option>
+                <option value="Educação">📚 Educação</option>
+                <option value="Geral">📦 Geral</option>
+              </>
+            ) : (
+              <>
+                <option value="Salário">💰 Salário</option>
+                <option value="Rendimentos">📈 Rendimentos</option>
+                <option value="Vendas">🛍️ Vendas</option>
+                <option value="Geral">📦 Geral</option>
+              </>
+            )}
+          </select>
+        </div>
+        
+        <div className="form-group">
+          <label className="form-label">Data</label>
+          <input type="date" className="form-input" value={date} onChange={(e) => setDate(e.target.value)} />
+        </div>
+        
+        {!editingId && (
+          <div className="form-group" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1rem' }}>
+            <input type="checkbox" id="repeatCheckbox" checked={repeat} onChange={(e) => setRepeat(e.target.checked)} style={{ width: '1.2rem', height: '1.2rem', cursor: 'pointer' }} />
+            <label htmlFor="repeatCheckbox" style={{ cursor: 'pointer', color: 'var(--text-secondary)' }}>
+              Repetir todo mês (1 ano)
+            </label>
+          </div>
+        )}
+        
+        <button type="submit" className="btn-primary">
+          {editingId ? 'Salvar Alterações' : 'Adicionar Lançamento'}
+        </button>
+      </form>
+    </>
+  );
+
   return (
     <div className="container">
       <header className="header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
@@ -159,84 +240,21 @@ export default function TransactionsPage() {
       </header>
 
       <div className="main-grid">
-        {/* Formulário */}
-        <div>
-          <div className="glass-card" style={{ position: 'sticky', top: '2rem' }}>
-            <div className="card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <h2 className="card-title">
-                {editingId ? <Edit2 size={20} className="text-accent" /> : <Plus size={20} className="text-accent" />}
-                {editingId ? 'Editar Lançamento' : 'Nova Transação'}
-              </h2>
-              {editingId && (
-                <button type="button" onClick={cancelEdit} style={{ background: 'none', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer' }}>
-                  <X size={20} />
-                </button>
-              )}
-            </div>
-            
-            <form onSubmit={handleSubmit}>
-              <div className="form-group">
-                <label className="form-label">Qual o título?</label>
-                <input type="text" className="form-input" value={title} onChange={(e) => setTitle(e.target.value)} required placeholder="Ex: Salário, Netflix..." />
-              </div>
-              
-              <div className="form-group">
-                <label className="form-label">Valor (R$)</label>
-                <input type="number" step="0.01" className="form-input" value={amount} onChange={(e) => setAmount(e.target.value)} required placeholder="0.00" />
-              </div>
-              
-              <div className="form-group">
-                <label className="form-label">Tipo de Lançamento</label>
-                <select className="form-input form-select" value={type} onChange={(e) => setType(e.target.value as 'income'|'expense')}>
-                  <option value="expense">📉 Despesa</option>
-                  <option value="income">📈 Receita</option>
-                </select>
-              </div>
-              
-              <div className="form-group">
-                <label className="form-label">Categoria</label>
-                <select className="form-input form-select" value={category} onChange={(e) => setCategory(e.target.value)} required>
-                  {type === 'expense' ? (
-                    <>
-                      <option value="Alimentação">🍔 Alimentação</option>
-                      <option value="Transporte">🚗 Transporte</option>
-                      <option value="Moradia">🏠 Moradia</option>
-                      <option value="Lazer">🍿 Lazer</option>
-                      <option value="Saúde">💊 Saúde</option>
-                      <option value="Educação">📚 Educação</option>
-                      <option value="Geral">📦 Geral</option>
-                    </>
-                  ) : (
-                    <>
-                      <option value="Salário">💰 Salário</option>
-                      <option value="Rendimentos">📈 Rendimentos</option>
-                      <option value="Vendas">🛍️ Vendas</option>
-                      <option value="Geral">📦 Geral</option>
-                    </>
-                  )}
-                </select>
-              </div>
-              
-              <div className="form-group">
-                <label className="form-label">Data</label>
-                <input type="date" className="form-input" value={date} onChange={(e) => setDate(e.target.value)} />
-              </div>
-              
-              {!editingId && (
-                <div className="form-group" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1rem' }}>
-                  <input type="checkbox" id="repeatCheckbox" checked={repeat} onChange={(e) => setRepeat(e.target.checked)} style={{ width: '1.2rem', height: '1.2rem', cursor: 'pointer' }} />
-                  <label htmlFor="repeatCheckbox" style={{ cursor: 'pointer', color: 'var(--text-secondary)' }}>
-                    Repetir todo mês (1 ano)
-                  </label>
-                </div>
-              )}
-              
-              <button type="submit" className="btn-primary">
-                {editingId ? 'Salvar Alterações' : 'Adicionar Lançamento'}
-              </button>
-            </form>
+        {/* Formulário Desktop */}
+        <div className="desktop-only">
+          <div className="glass-card sticky-card">
+            <FormContent />
           </div>
         </div>
+
+        {/* Modal Mobile */}
+        {isModalOpen && (
+          <div className="bottom-sheet-overlay mobile-only" onClick={(e) => { if(e.target === e.currentTarget) setIsModalOpen(false); }}>
+            <div className="bottom-sheet-content">
+              <FormContent />
+            </div>
+          </div>
+        )}
 
         {/* Lista de Transações */}
         <div>
@@ -258,31 +276,32 @@ export default function TransactionsPage() {
               <div className="transaction-list" style={{ maxHeight: '600px' }}>
                 {transactions.map((t) => (
                   <div key={t.id} className="tx-item">
-                    <div style={{ display: 'flex', alignItems: 'center' }}>
-                      <div className={`tx-icon-wrap ${t.type}`}>
-                        {t.type === 'income' ? <TrendingUp size={20} /> : <Receipt size={20} />}
-                      </div>
-                      <div className="tx-details">
-                        <div className="tx-title">{t.title}</div>
-                        <div className="tx-meta">
-                          <span className="tx-category-badge">{t.category}</span>
-                          <span>{new Date(t.date).toLocaleDateString('pt-BR')}</span>
-                        </div>
-                      </div>
+                    <div className={`tx-icon-wrap ${t.type}`}>
+                      {t.type === 'income' ? <TrendingUp size={20} /> : <Receipt size={20} />}
                     </div>
                     
-                    <div className="tx-right">
+                    <div className="tx-title-container">
+                      <div className="tx-title" title={t.title}>{t.title}</div>
+                    </div>
+
+                    <div className="tx-amount-container">
                       <div className={`tx-amount ${t.type}`}>
                         {t.type === 'income' ? '+' : '-'} {formatCurrency(t.amount)}
                       </div>
-                      <div style={{ display: 'flex', gap: '0.5rem' }}>
-                        <button onClick={() => handleEdit(t)} className="btn-icon" title="Editar transação" style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--text-secondary)' }}>
-                          <Edit2 size={16} />
-                        </button>
-                        <button onClick={() => handleDelete(t.id)} className="btn-delete" title="Remover transação">
-                          <Trash2 size={16} />
-                        </button>
-                      </div>
+                    </div>
+                    
+                    <div className="tx-meta-container">
+                      <span className="tx-category-badge">{t.category}</span>
+                      <span>{new Date(t.date).toLocaleDateString('pt-BR')}</span>
+                    </div>
+                    
+                    <div className="tx-actions-container">
+                      <button onClick={() => handleEdit(t)} className="btn-icon" title="Editar transação" style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--text-secondary)' }}>
+                        <Edit2 size={16} />
+                      </button>
+                      <button onClick={() => handleDelete(t.id)} className="btn-delete" title="Remover transação">
+                        <Trash2 size={16} />
+                      </button>
                     </div>
                   </div>
                 ))}
@@ -291,6 +310,17 @@ export default function TransactionsPage() {
           </div>
         </div>
       </div>
+      
+      {/* Floating Action Button - Mobile Only */}
+      {!isModalOpen && (
+        <button 
+          className="fab-button mobile-only" 
+          onClick={() => setIsModalOpen(true)}
+          title="Nova transação"
+        >
+          <Plus size={24} />
+        </button>
+      )}
     </div>
   );
 }

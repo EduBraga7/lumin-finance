@@ -2,30 +2,31 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Wallet, LayoutDashboard, ArrowRightLeft, LogOut } from 'lucide-react';
+import { LayoutDashboard, Receipt, LogOut, BarChart2 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 
 export default function Sidebar() {
   const pathname = usePathname();
-  const { signOut, user } = useAuth();
+  const { user, signOut } = useAuth();
 
   return (
-    <aside className="sidebar">
-      <Link href="/" className="sidebar-logo">
-        <div className="logo-icon">
-          <Wallet size={20} color="#fff" />
-        </div>
-        Lumin
-      </Link>
+    <aside style={{ width: '250px', background: 'var(--surface)', padding: '2rem 1.5rem', display: 'flex', flexDirection: 'column', borderRight: '1px solid var(--border-subtle)' }}>
+      <div style={{ marginBottom: '3rem' }}>
+        <h2 style={{ fontSize: '1.5rem', fontWeight: 700, color: 'var(--text-primary)' }}>Lumin Finance</h2>
+      </div>
 
-      <nav className="nav-menu">
+      <nav style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
         <Link href="/" className={`nav-link ${pathname === '/' ? 'active' : ''}`}>
           <LayoutDashboard size={20} />
-          Resumo
+          Dashboard
         </Link>
         <Link href="/transactions" className={`nav-link ${pathname === '/transactions' ? 'active' : ''}`}>
-          <ArrowRightLeft size={20} />
+          <Receipt size={20} />
           Lançamentos
+        </Link>
+        <Link href="/reports" className={`nav-link ${pathname === '/reports' ? 'active' : ''}`}>
+          <BarChart2 size={20} />
+          Relatórios Anuais
         </Link>
       </nav>
 

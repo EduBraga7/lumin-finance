@@ -163,7 +163,26 @@ export default function TransactionsPage() {
               
               <div className="form-group">
                 <label className="form-label">Categoria</label>
-                <input type="text" className="form-input" value={category} onChange={(e) => setCategory(e.target.value)} required placeholder="Alimentação, Moradia..." />
+                <select className="form-input form-select" value={category} onChange={(e) => setCategory(e.target.value)} required>
+                  {type === 'expense' ? (
+                    <>
+                      <option value="Alimentação">🍔 Alimentação</option>
+                      <option value="Transporte">🚗 Transporte</option>
+                      <option value="Moradia">🏠 Moradia</option>
+                      <option value="Lazer">🍿 Lazer</option>
+                      <option value="Saúde">💊 Saúde</option>
+                      <option value="Educação">📚 Educação</option>
+                      <option value="Geral">📦 Geral</option>
+                    </>
+                  ) : (
+                    <>
+                      <option value="Salário">💰 Salário</option>
+                      <option value="Rendimentos">📈 Rendimentos</option>
+                      <option value="Vendas">🛍️ Vendas</option>
+                      <option value="Geral">📦 Geral</option>
+                    </>
+                  )}
+                </select>
               </div>
               
               <div className="form-group">

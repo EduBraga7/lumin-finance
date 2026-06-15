@@ -17,8 +17,11 @@ app.get('/', (req, res) => {
 // Routes
 const transactionsRoutes = require('./routes/transactions');
 const authRoutes = require('./routes/auth');
+const aiRoutes = require('./routes/ai');
+
 app.use('/api/auth', authRoutes);
 app.use('/api/transactions', transactionsRoutes);
+app.use('/api/ai', aiRoutes);
 
 
 app.listen(PORT, () => {

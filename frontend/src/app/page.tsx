@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer, Legend } from 'recharts';
-import { LayoutDashboard } from 'lucide-react';
+import { LayoutDashboard, Sparkles, Loader2 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { useDateFilter } from '@/context/DateFilterContext';
 import MonthSelector from '@/components/MonthSelector';
@@ -34,6 +34,8 @@ const MONTH_NAMES = [
 export default function Home() {
   const [dashboard, setDashboard] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [aiAdvice, setAiAdvice] = useState<string | null>(null);
+  const [loadingAi, setLoadingAi] = useState(false);
 
   const { session } = useAuth();
   const { month, year } = useDateFilter();
@@ -54,6 +56,30 @@ export default function Home() {
       setLoading(false);
     }
   }, [session, month, year]);
+
+  const fetchAiAdvice = async () => {
+    if (!session?.access_token) return;
+    setLoadingAi(true);
+    setAiAdvice(null);
+    try {
+      const res = await fetch(`${API_URL}/api/ai/advisor?month=${month}&year=${year}`, {
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`
+        }
+      });
+      const data = await res.json();
+      if (data.error) {
+        alert(data.error);
+      } else {
+        setAiAdvice(data.advice);
+      }
+    } catch (err) {
+      console.error(err);
+      alert('Erro ao buscar conselho da IA.');
+    } finally {
+      setLoadingAi(false);
+    }
+  };
 
   useEffect(() => {
     fetchDashboard();
@@ -102,6 +128,38 @@ export default function Home() {
           </div>
         </div>
       )}
+
+      <div className="glass-card" style={{ marginBottom: '3rem', background: 'linear-gradient(145deg, rgba(30,27,75,0.4) 0%, rgba(15,23,42,0.4) 100%)', border: '1px solid rgba(99,102,241,0.2)' }}>
+        <div className="card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <h2 className="card-title" style={{ color: '#a5b4fc' }}>
+            <Sparkles size={20} />
+            Conselheiro Financeiro (IA)
+          </h2>
+          {!loadingAi && (
+            <button onClick={fetchAiAdvice} className="btn-primary" style={{ background: '#4f46e5', padding: '0.5rem 1rem' }}>
+              Analisar {MONTH_NAMES[month - 1]}
+            </button>
+          )}
+        </div>
+        
+        <div style={{ minHeight: '80px', display: 'flex', alignItems: 'center', justifyContent: aiAdvice || loadingAi ? 'flex-start' : 'center' }}>
+          {loadingAi ? (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--text-secondary)' }}>
+              <Loader2 className="spinner" size={20} style={{ animation: 'spin 2s linear infinite' }} />
+              <span>A Inteligência Artificial está analisando seus gastos...</span>
+              <style>{`@keyframes spin { 100% { transform: rotate(360deg); } }`}</style>
+            </div>
+          ) : aiAdvice ? (
+            <div style={{ color: 'var(--text-primary)', lineHeight: '1.6', whiteSpace: 'pre-wrap' }}>
+              {aiAdvice}
+            </div>
+          ) : (
+            <p style={{ color: 'var(--text-secondary)', textAlign: 'center', margin: 0 }}>
+              Clique no botão para gerar uma análise sarcástica (e real) dos seus gastos deste mês.
+            </p>
+          )}
+        </div>
+      </div>
 
       {pieData.length > 0 ? (
         <div className="glass-card" style={{ maxWidth: '800px', margin: '0 auto' }}>

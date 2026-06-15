@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useEffect, useState } from 'react';
-import { LayoutDashboard, Receipt, LogOut, BarChart2, Sun, Moon } from 'lucide-react';
+import { LayoutDashboard, Receipt, LogOut, BarChart2, Sun, Moon, Calendar } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 
 export default function Sidebar() {
@@ -44,7 +44,11 @@ export default function Sidebar() {
         </Link>
         <Link href="/transactions" className={`nav-link ${pathname === '/transactions' ? 'active' : ''}`}>
           <Receipt size={20} />
-          Lançamentos
+          Lançamentos (Pagos)
+        </Link>
+        <Link href="/bills" className={`nav-link ${pathname === '/bills' ? 'active' : ''}`}>
+          <Calendar size={20} />
+          Contas a Pagar
         </Link>
         <Link href="/reports" className={`nav-link ${pathname === '/reports' ? 'active' : ''}`}>
           <BarChart2 size={20} />

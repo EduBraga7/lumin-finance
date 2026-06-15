@@ -39,13 +39,20 @@ const applyDateFilter = (query, month, year) => {
 
 // GET /api/transactions
 router.get('/', requireAuth, async (req, res) => {
-  const { month, year } = req.query;
+  const { month, year, status } = req.query;
   let query = req.supabase
     .from('transactions')
     .select('*')
     .eq('user_id', req.user.id)
     .order('date', { ascending: false })
     .order('created_at', { ascending: false });
+
+  if (status === 'pending') {
+    query = query.eq('is_paid', false);
+  } else if (status === 'paid') {
+    // Para retrocompatibilidade, vamos aceitar true ou nulo (já que antes não tinha a coluna)
+    query = query.neq('is_paid', false);
+  }
 
   query = applyDateFilter(query, month, year);
 

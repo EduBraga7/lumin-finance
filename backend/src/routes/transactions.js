@@ -208,8 +208,9 @@ router.get('/yearly', requireAuth, async (req, res) => {
 
   const { data, error } = await req.supabase
     .from('transactions')
-    .select('amount, type, date')
+    .select('amount, type, date, is_paid')
     .eq('user_id', req.user.id)
+    .neq('is_paid', false)
     .gte('date', startDate)
     .lte('date', endDate);
 

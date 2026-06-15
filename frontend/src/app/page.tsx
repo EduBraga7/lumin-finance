@@ -14,6 +14,7 @@ interface DashboardData {
   totalExpense: number;
   balance: number;
   expensesByCategory: Record<string, number>;
+  pendingTransactions?: any[];
 }
 
 export const CATEGORY_COLORS: Record<string, string> = {
@@ -85,6 +86,24 @@ export default function Home() {
     fetchDashboard();
   }, [fetchDashboard]);
 
+  const handlePayTransaction = async (id: string) => {
+    if (!session?.access_token) return;
+    try {
+      const res = await fetch(`${API_URL}/api/transactions/${id}/pay`, {
+        method: 'PUT',
+        headers: { 'Authorization': `Bearer ${session.access_token}` }
+      });
+      if (res.ok) {
+        fetchDashboard();
+      } else {
+        alert('Erro ao processar pagamento.');
+      }
+    } catch(e) {
+      console.error(e);
+      alert('Erro na requisição.');
+    }
+  };
+
   const formatCurrency = (val: number) => {
     return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val);
   };
@@ -125,6 +144,43 @@ export default function Home() {
             <div className="stat-value expense">
               {formatCurrency(dashboard.totalExpense)}
             </div>
+          </div>
+        </div>
+      )}
+
+      {dashboard && dashboard.pendingTransactions && dashboard.pendingTransactions.length > 0 && (
+        <div className="glass-card" style={{ marginBottom: '3rem', border: '1px solid var(--color-expense)' }}>
+          <div className="card-header">
+            <h2 className="card-title" style={{ color: 'var(--color-expense)' }}>
+              ⏰ Contas a Pagar ({dashboard.pendingTransactions.length})
+            </h2>
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+            {dashboard.pendingTransactions.map((pt: any) => {
+              // Verifica se a data é menor que hoje (sem horas)
+              const today = new Date();
+              today.setHours(0,0,0,0);
+              // Pega a data da conta ajustando timezone
+              const dueDate = new Date(`${pt.date}T12:00:00Z`);
+              const isOverdue = dueDate < today;
+
+              return (
+                <div key={pt.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(255,255,255,0.02)', padding: '1rem', borderRadius: '8px', borderLeft: `4px solid ${isOverdue ? 'var(--color-expense)' : 'var(--accent-primary)'}` }}>
+                  <div>
+                    <div style={{ fontWeight: 'bold' }}>{pt.title}</div>
+                    <div style={{ fontSize: '0.8rem', color: isOverdue ? 'var(--color-expense)' : 'var(--text-secondary)' }}>
+                      Vencimento: {new Date(pt.date).toLocaleDateString('pt-BR')} {isOverdue ? '(Atrasada)' : ''}
+                    </div>
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
+                    <div style={{ fontWeight: 'bold' }}>{formatCurrency(pt.amount)}</div>
+                    <button onClick={() => handlePayTransaction(pt.id)} className="btn-primary" style={{ padding: '0.5rem 1rem', background: 'var(--accent-primary)', width: 'auto', marginTop: 0 }}>
+                      ✅ Marcar Pago
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
           </div>
         </div>
       )}

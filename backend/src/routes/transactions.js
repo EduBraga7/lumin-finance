@@ -56,7 +56,7 @@ router.get('/', requireAuth, async (req, res) => {
 
 // POST /api/transactions
 router.post('/', requireAuth, async (req, res) => {
-  const { title, amount, type, category, date, repeat_months } = req.body;
+  const { title, amount, type, category, date, repeat_months, is_paid } = req.body;
 
   if (!title || !amount || !type || !category) {
     return res.status(400).json({ error: 'Todos os campos obrigatórios devem ser preenchidos.' });
@@ -81,7 +81,8 @@ router.post('/', requireAuth, async (req, res) => {
       type,
       category,
       date: targetDate.toISOString().split('T')[0],
-      user_id: req.user.id
+      user_id: req.user.id,
+      is_paid: is_paid !== undefined ? is_paid : true
     });
   }
 
@@ -97,11 +98,28 @@ router.post('/', requireAuth, async (req, res) => {
 // PUT /api/transactions/:id
 router.put('/:id', requireAuth, async (req, res) => {
   const { id } = req.params;
-  const { title, amount, type, category, date } = req.body;
+  const { title, amount, type, category, date, is_paid } = req.body;
 
   const { data, error } = await req.supabase
     .from('transactions')
-    .update({ title, amount, type, category, date })
+    .update({ title, amount, type, category, date, is_paid })
+    .eq('id', id)
+    .eq('user_id', req.user.id)
+    .select();
+
+  if (error) return res.status(500).json({ error: error.message });
+  if (data.length === 0) return res.status(404).json({ error: 'Transação não encontrada.' });
+
+  res.json(data[0]);
+});
+
+// PUT /api/transactions/:id/pay
+router.put('/:id/pay', requireAuth, async (req, res) => {
+  const { id } = req.params;
+
+  const { data, error } = await req.supabase
+    .from('transactions')
+    .update({ is_paid: true })
     .eq('id', id)
     .eq('user_id', req.user.id)
     .select();
@@ -159,11 +177,16 @@ router.get('/dashboard', requireAuth, async (req, res) => {
     }
   });
 
+  const pendingTransactions = data
+    .filter(t => t.type === 'expense' && t.is_paid === false)
+    .sort((a, b) => new Date(a.date) - new Date(b.date));
+
   res.json({
     totalIncome,
     totalExpense,
     balance: totalIncome - totalExpense,
-    expensesByCategory
+    expensesByCategory,
+    pendingTransactions
   });
 });
 

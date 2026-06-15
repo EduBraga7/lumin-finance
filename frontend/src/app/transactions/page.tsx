@@ -15,6 +15,7 @@ interface Transaction {
   type: 'income' | 'expense';
   category: string;
   date: string;
+  is_paid?: boolean;
 }
 
 export default function TransactionsPage() {
@@ -28,6 +29,7 @@ export default function TransactionsPage() {
   const [category, setCategory] = useState('Geral');
   const [date, setDate] = useState('');
   const [repeat, setRepeat] = useState(false);
+  const [isPaid, setIsPaid] = useState(true);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
 
@@ -73,6 +75,7 @@ export default function TransactionsPage() {
           type, 
           category, 
           date,
+          is_paid: isPaid,
           repeat_months: repeat && !editingId ? 12 : 1 
         })
       });
@@ -95,6 +98,7 @@ export default function TransactionsPage() {
     setType(t.type);
     setCategory(t.category);
     setDate(t.date);
+    setIsPaid(t.is_paid !== false);
     setIsModalOpen(true);
   };
 
@@ -106,6 +110,7 @@ export default function TransactionsPage() {
     setCategory('Geral');
     setDate('');
     setRepeat(false);
+    setIsPaid(true);
     setIsModalOpen(false);
   };
 
@@ -210,6 +215,15 @@ export default function TransactionsPage() {
           <input type="date" className="form-input" value={date} onChange={(e) => setDate(e.target.value)} />
         </div>
         
+        {type === 'expense' && (
+          <div className="form-group" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1rem', padding: '0.5rem', background: 'rgba(255,255,255,0.02)', borderRadius: '8px', border: '1px solid var(--border-subtle)' }}>
+            <input type="checkbox" id="isPaidCheckbox" checked={isPaid} onChange={(e) => setIsPaid(e.target.checked)} style={{ width: '1.2rem', height: '1.2rem', cursor: 'pointer' }} />
+            <label htmlFor="isPaidCheckbox" style={{ cursor: 'pointer', color: isPaid ? 'var(--accent-primary)' : 'var(--color-expense)', fontWeight: 600 }}>
+              {isPaid ? '✅ Despesa Paga' : '⏳ Conta Pendente (A Pagar)'}
+            </label>
+          </div>
+        )}
+        
         {!editingId && (
           <div className="form-group" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1rem' }}>
             <input type="checkbox" id="repeatCheckbox" checked={repeat} onChange={(e) => setRepeat(e.target.checked)} style={{ width: '1.2rem', height: '1.2rem', cursor: 'pointer' }} />
@@ -292,6 +306,9 @@ export default function TransactionsPage() {
                     
                     <div className="tx-meta-container">
                       <span className="tx-category-badge">{t.category}</span>
+                      {t.type === 'expense' && t.is_paid === false && (
+                        <span style={{ fontSize: '0.7rem', padding: '0.1rem 0.4rem', borderRadius: '4px', background: 'var(--color-expense-bg)', color: 'var(--color-expense)', fontWeight: 600, textTransform: 'uppercase' }}>Pendente</span>
+                      )}
                       <span>{new Date(t.date).toLocaleDateString('pt-BR')}</span>
                     </div>
                     

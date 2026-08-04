@@ -185,16 +185,16 @@ export default function Home() {
         </div>
       )}
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))', gap: '2rem', alignItems: 'start' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1.5rem', alignItems: 'start' }}>
         {/* IA Card */}
         <div className="glass-card ai-card">
-        <div className="card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div className="card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.75rem' }}>
           <h2 className="card-title ai-card-title">
             <Sparkles size={20} />
             Conselheiro Financeiro (IA)
           </h2>
           {!loadingAi && (
-            <button onClick={fetchAiAdvice} className="btn-primary" style={{ background: '#4f46e5', padding: '0.5rem 1rem' }}>
+            <button onClick={fetchAiAdvice} className="btn-primary" style={{ background: '#4f46e5', padding: '0.5rem 1rem', width: 'auto', marginTop: 0 }}>
               Analisar {MONTH_NAMES[month - 1]}
             </button>
           )}

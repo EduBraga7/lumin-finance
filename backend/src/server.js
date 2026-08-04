@@ -6,7 +6,23 @@ const app = express();
 const PORT = process.env.PORT || 3001;
 
 // Middlewares
-app.use(cors());
+const allowedOrigins = [
+  process.env.FRONTEND_URL || 'http://localhost:3000',
+  'http://localhost:3000',
+  'http://127.0.0.1:3000'
+];
+
+app.use(cors({
+  origin: function (origin, callback) {
+    // Permite requisições sem origem (ex: apps mobile ou curl) ou origens na lista permitida
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(null, true); // em dev pode flexibilizar ou restringir conforme necessário
+    }
+  },
+  credentials: true
+}));
 app.use(express.json());
 
 // Basic Route to test

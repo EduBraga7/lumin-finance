@@ -5,7 +5,17 @@ const jwt = require('jsonwebtoken');
 const { createClient } = require('@supabase/supabase-js');
 
 const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_KEY);
-const JWT_SECRET = process.env.JWT_SECRET || 'lumin-finance-secret-key-123';
+const JWT_SECRET = process.env.JWT_SECRET;
+if (!JWT_SECRET) {
+  console.warn('⚠️ AVISO DE SEGURANÇA: JWT_SECRET não configurado nas variáveis de ambiente!');
+}
+
+function getJwtSecret() {
+  if (!process.env.JWT_SECRET) {
+    throw new Error('JWT_SECRET não está configurado no servidor.');
+  }
+  return process.env.JWT_SECRET;
+}
 
 // POST /api/auth/register
 router.post('/register', async (req, res) => {
@@ -15,36 +25,46 @@ router.post('/register', async (req, res) => {
     return res.status(400).json({ error: 'Usuário e senha são obrigatórios.' });
   }
 
-  // 1. Verificar se usuário já existe
-  const { data: existingUser } = await supabase
-    .from('custom_users')
-    .select('id')
-    .eq('username', username)
-    .single();
-
-  if (existingUser) {
-    return res.status(400).json({ error: 'Nome de usuário já está em uso.' });
+  if (typeof password !== 'string' || password.length < 8) {
+    return res.status(400).json({ error: 'A senha deve ter pelo menos 8 caracteres.' });
   }
 
-  // 2. Criptografar a senha
-  const salt = await bcrypt.genSalt(10);
-  const hashedPassword = await bcrypt.hash(password, salt);
+  try {
+    const jwtSecret = getJwtSecret();
 
-  // 3. Inserir no banco
-  const { data, error } = await supabase
-    .from('custom_users')
-    .insert([{ username, password: hashedPassword }])
-    .select()
-    .single();
+    // 1. Verificar se usuário já existe
+    const { data: existingUser } = await supabase
+      .from('custom_users')
+      .select('id')
+      .eq('username', username)
+      .single();
 
-  if (error) {
-    return res.status(500).json({ error: 'Erro ao criar usuário: ' + error.message });
+    if (existingUser) {
+      return res.status(400).json({ error: 'Nome de usuário já está em uso.' });
+    }
+
+    // 2. Criptografar a senha
+    const salt = await bcrypt.genSalt(10);
+    const hashedPassword = await bcrypt.hash(password, salt);
+
+    // 3. Inserir no banco
+    const { data, error } = await supabase
+      .from('custom_users')
+      .insert([{ username, password: hashedPassword }])
+      .select()
+      .single();
+
+    if (error) {
+      return res.status(500).json({ error: 'Erro ao criar usuário: ' + error.message });
+    }
+
+    // 4. Gerar JWT
+    const token = jwt.sign({ id: data.id, username: data.username }, jwtSecret, { expiresIn: '7d' });
+
+    res.status(201).json({ user: { id: data.id, username: data.username }, token });
+  } catch (err) {
+    return res.status(500).json({ error: err.message || 'Erro interno no servidor' });
   }
-
-  // 4. Gerar JWT
-  const token = jwt.sign({ id: data.id, username: data.username }, JWT_SECRET, { expiresIn: '7d' });
-
-  res.status(201).json({ user: { id: data.id, username: data.username }, token });
 });
 
 // POST /api/auth/login
@@ -55,27 +75,33 @@ router.post('/login', async (req, res) => {
     return res.status(400).json({ error: 'Usuário e senha são obrigatórios.' });
   }
 
-  // 1. Buscar usuário no banco
-  const { data: user, error } = await supabase
-    .from('custom_users')
-    .select('*')
-    .eq('username', username)
-    .single();
+  try {
+    const jwtSecret = getJwtSecret();
 
-  if (error || !user) {
-    return res.status(401).json({ error: 'Usuário não encontrado.' });
+    // 1. Buscar usuário no banco
+    const { data: user, error } = await supabase
+      .from('custom_users')
+      .select('*')
+      .eq('username', username)
+      .single();
+
+    if (error || !user) {
+      return res.status(401).json({ error: 'Usuário ou senha incorretos.' });
+    }
+
+    // 2. Validar senha
+    const validPassword = await bcrypt.compare(password, user.password);
+    if (!validPassword) {
+      return res.status(401).json({ error: 'Usuário ou senha incorretos.' });
+    }
+
+    // 3. Gerar JWT
+    const token = jwt.sign({ id: user.id, username: user.username }, jwtSecret, { expiresIn: '7d' });
+
+    res.json({ user: { id: user.id, username: user.username }, token });
+  } catch (err) {
+    return res.status(500).json({ error: err.message || 'Erro interno no servidor' });
   }
-
-  // 2. Validar senha
-  const validPassword = await bcrypt.compare(password, user.password);
-  if (!validPassword) {
-    return res.status(401).json({ error: 'Senha incorreta.' });
-  }
-
-  // 3. Gerar JWT
-  const token = jwt.sign({ id: user.id, username: user.username }, JWT_SECRET, { expiresIn: '7d' });
-
-  res.json({ user: { id: user.id, username: user.username }, token });
 });
 
 module.exports = router;

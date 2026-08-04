@@ -70,15 +70,15 @@ export default function Home() {
           'Authorization': `Bearer ${session.access_token}`
         }
       });
-      const data = await res.json();
-      if (data.error) {
-        setAiError(data.error);
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || data.error) {
+        setAiError(data.error || `Erro (${res.status}): Não foi possível obter a análise da IA.`);
       } else {
         setAiAdvice(data.advice);
       }
     } catch (err: any) {
       console.error(err);
-      setAiError('Erro ao conectar com o serviço de Inteligência Artificial.');
+      setAiError('Erro de conexão ao comunicar com o serviço de Inteligência Artificial.');
     } finally {
       setLoadingAi(false);
     }

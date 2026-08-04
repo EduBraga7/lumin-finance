@@ -6,10 +6,14 @@ const { createClient } = require('@supabase/supabase-js');
 const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseKey = process.env.SUPABASE_KEY;
 const supabase = createClient(supabaseUrl, supabaseKey); // Cliente global
-const JWT_SECRET = process.env.JWT_SECRET || 'lumin-finance-secret-key-123';
+const JWT_SECRET = process.env.JWT_SECRET;
 
 // Middleware customizado para decodificar o nosso JWT
 const requireAuth = (req, res, next) => {
+  if (!JWT_SECRET) {
+    return res.status(500).json({ error: 'Erro de configuração no servidor: JWT_SECRET não configurado.' });
+  }
+
   const authHeader = req.headers.authorization;
   if (!authHeader) {
     return res.status(401).json({ error: 'Falta o token de autenticação (Authorization header)' });

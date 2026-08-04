@@ -7,9 +7,12 @@ const { GoogleGenerativeAI } = require('@google/generative-ai');
 const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseKey = process.env.SUPABASE_KEY;
 const supabase = createClient(supabaseUrl, supabaseKey);
-const JWT_SECRET = process.env.JWT_SECRET || 'lumin-finance-secret-key-123';
+const JWT_SECRET = process.env.JWT_SECRET;
 
 const requireAuth = (req, res, next) => {
+  if (!JWT_SECRET) {
+    return res.status(500).json({ error: 'Erro de configuração no servidor: JWT_SECRET não configurado.' });
+  }
   const authHeader = req.headers.authorization;
   if (!authHeader) return res.status(401).json({ error: 'Falta o token de autenticação' });
   const token = authHeader.replace('Bearer ', '');
@@ -31,8 +34,11 @@ router.get('/advisor', requireAuth, async (req, res) => {
       return res.status(503).json({ error: 'A chave da API do Gemini (GEMINI_API_KEY) não está configurada no servidor.' });
     }
 
-    const startDate = new Date(year, month - 1, 1).toISOString();
-    const endDate = new Date(year, month, 0, 23, 59, 59, 999).toISOString();
+    const m = parseInt(month, 10);
+    const y = parseInt(year, 10);
+    const lastDay = new Date(y, m, 0).getDate();
+    const startDate = `${y}-${String(m).padStart(2, '0')}-01`;
+    const endDate = `${y}-${String(m).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}T23:59:59.999Z`;
 
     const { data: transactions, error } = await supabase
       .from('transactions')
@@ -47,13 +53,13 @@ router.get('/advisor', requireAuth, async (req, res) => {
     let totalExpense = 0;
     const expenseByCategory = {};
 
-    transactions.forEach(t => {
-      const amount = parseFloat(t.amount);
+    (transactions || []).forEach(t => {
+      const amount = parseFloat(t.amount || 0);
       if (t.type === 'income') {
         totalIncome += amount;
       } else {
         totalExpense += amount;
-        expenseByCategory[t.category] = (expenseByCategory[t.category] || 0) + amount;
+        expenseByCategory[t.category || 'Geral'] = (expenseByCategory[t.category || 'Geral'] || 0) + amount;
       }
     });
 
@@ -70,23 +76,48 @@ router.get('/advisor', requireAuth, async (req, res) => {
       - Saldo final do mês: R$ ${balance.toFixed(2)}
       
       Divisão das despesas:
-      ${Object.entries(expenseByCategory).map(([cat, val]) => `- ${cat}: R$ ${val.toFixed(2)}`).join('\n')}
+      ${Object.keys(expenseByCategory).length > 0 
+        ? Object.entries(expenseByCategory).map(([cat, val]) => `- ${cat}: R$ ${val.toFixed(2)}`).join('\n')
+        : '- Nenhuma despesa registrada neste mês.'}
       
       Seja ácido e engraçado, critique onde ele gastou muito (especialmente futilidades como lazer ou alimentação cara) ou elogie de forma irônica se sobrou dinheiro. Não invente dados que não estão listados.
     `;
 
     const genAI = new GoogleGenerativeAI(apiKey);
-    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+    const candidateModels = ['gemini-1.5-flash', 'gemini-2.0-flash', 'gemini-2.5-flash', 'gemini-1.5-pro'];
+    let text = '';
+    let lastError = null;
 
-    const result = await model.generateContent(prompt);
-    const response = await result.response;
-    const text = response.text();
+    for (const modelName of candidateModels) {
+      try {
+        const model = genAI.getGenerativeModel({ model: modelName });
+        const result = await model.generateContent(prompt);
+        const response = await result.response;
+        text = response.text();
+        if (text) break;
+      } catch (err) {
+        console.warn(`[Backend IA] Tentativa com modelo ${modelName} falhou:`, err?.message || err);
+        lastError = err;
+      }
+    }
+
+    if (!text && lastError) {
+      throw lastError;
+    }
 
     res.json({ advice: text });
 
   } catch (error) {
-    console.error("Erro na API de IA:", error);
-    res.status(500).json({ error: 'Erro ao gerar conselho com a IA.' });
+    console.error("Erro na API de IA (backend):", error);
+    const errMsg = error?.message || String(error);
+
+    if (error?.status === 429 || errMsg.includes('429') || errMsg.includes('quota') || errMsg.includes('RESOURCE_EXHAUSTED')) {
+      return res.status(429).json({ 
+        error: 'Limite de chamadas da IA atingido temporariamente. Por favor, aguarde cerca de 30 segundos e tente novamente.' 
+      });
+    }
+
+    res.status(500).json({ error: 'Erro ao gerar conselho com a IA: ' + errMsg });
   }
 });
 

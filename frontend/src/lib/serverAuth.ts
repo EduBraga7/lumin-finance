@@ -7,7 +7,13 @@ const supabaseKey = process.env.SUPABASE_KEY || process.env.NEXT_PUBLIC_SUPABASE
 
 export const supabaseServer = createClient(supabaseUrl, supabaseKey);
 
-export const JWT_SECRET = process.env.JWT_SECRET || 'lumin-finance-secret-key-123';
+export function getJwtSecret(): string {
+  const secret = process.env.JWT_SECRET;
+  if (!secret) {
+    throw new Error('JWT_SECRET não está configurado nas variáveis de ambiente do Next.js.');
+  }
+  return secret;
+}
 
 export interface DecodedUser {
   id: string;
@@ -15,12 +21,24 @@ export interface DecodedUser {
 }
 
 export function verifyAuth(req: NextRequest): DecodedUser | null {
-  const authHeader = req.headers.get('authorization');
-  if (!authHeader) return null;
+  let token: string | undefined;
 
-  const token = authHeader.replace('Bearer ', '');
+  // 1. Tentar ler do Authorization header (Bearer token)
+  const authHeader = req.headers.get('authorization');
+  if (authHeader) {
+    token = authHeader.replace('Bearer ', '');
+  }
+
+  // 2. Tentar ler do cookie HttpOnly
+  if (!token) {
+    token = req.cookies.get('lumin_token')?.value;
+  }
+
+  if (!token) return null;
+
   try {
-    const decoded = jwt.verify(token, JWT_SECRET) as DecodedUser;
+    const secret = getJwtSecret();
+    const decoded = jwt.verify(token, secret) as DecodedUser;
     return decoded;
   } catch (err) {
     return null;

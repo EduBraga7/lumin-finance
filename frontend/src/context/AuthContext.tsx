@@ -17,7 +17,7 @@ interface AuthContextType {
   session: Session | null;
   loading: boolean;
   signIn: (user: User, token: string) => void;
-  signOut: () => void;
+  signOut: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType>({
@@ -25,7 +25,7 @@ const AuthContext = createContext<AuthContextType>({
   session: null,
   loading: true,
   signIn: () => {},
-  signOut: () => {},
+  signOut: async () => {},
 });
 
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
@@ -36,13 +36,23 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const pathname = usePathname();
 
   useEffect(() => {
-    // Buscar nosso próprio token e usuário no navegador
-    const token = localStorage.getItem('lumin_token');
+    // Remover resquícios antigos do localStorage por segurança
+    localStorage.removeItem('lumin_token');
+
     const savedUser = localStorage.getItem('lumin_user');
+    const savedToken = sessionStorage.getItem('lumin_token_session'); // mantido apenas em memória de sessão temporária se necessário
     
-    if (token && savedUser) {
-      setSession({ access_token: token });
-      setUser(JSON.parse(savedUser));
+    if (savedUser) {
+      try {
+        setUser(JSON.parse(savedUser));
+        if (savedToken) {
+          setSession({ access_token: savedToken });
+        } else {
+          setSession({ access_token: 'cookie_session' });
+        }
+      } catch (e) {
+        console.error('Erro ao restaurar usuário:', e);
+      }
     }
     setLoading(false);
   }, []);
@@ -59,16 +69,21 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   }, [user, loading, pathname, router]);
 
   const signIn = (user: User, token: string) => {
-    localStorage.setItem('lumin_token', token);
     localStorage.setItem('lumin_user', JSON.stringify(user));
+    sessionStorage.setItem('lumin_token_session', token);
     setSession({ access_token: token });
     setUser(user);
     router.push('/');
   };
 
-  const signOut = () => {
-    localStorage.removeItem('lumin_token');
+  const signOut = async () => {
+    try {
+      await fetch('/api/auth/logout', { method: 'POST' });
+    } catch (e) {
+      console.error('Erro ao encerrar sessão no servidor:', e);
+    }
     localStorage.removeItem('lumin_user');
+    sessionStorage.removeItem('lumin_token_session');
     setSession(null);
     setUser(null);
     router.push('/login');

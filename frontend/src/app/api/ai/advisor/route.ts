@@ -68,7 +68,7 @@ export async function GET(req: NextRequest) {
     `;
 
     const genAI = new GoogleGenerativeAI(apiKey);
-    const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
+    const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
 
     const result = await model.generateContent(prompt);
     const response = await result.response;
@@ -77,6 +77,6 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ advice: text });
   } catch (error: any) {
     console.error('Erro na API de IA:', error);
-    return NextResponse.json({ error: 'Erro ao gerar conselho com a IA.' }, { status: 500 });
+    return NextResponse.json({ error: 'Erro ao gerar conselho com a IA: ' + (error.message || error) }, { status: 500 });
   }
 }

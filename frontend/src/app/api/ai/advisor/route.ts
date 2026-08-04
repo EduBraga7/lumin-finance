@@ -72,34 +72,42 @@ export async function GET(req: NextRequest) {
       Seja ácido e engraçado, critique onde ele gastou muito (especialmente futilidades como lazer ou alimentação cara) ou elogie de forma irônica se sobrou dinheiro. Não invente dados que não estão listados.
     `;
 
-    const genAI = new GoogleGenerativeAI(apiKey);
-    const candidateModels = [
-      'gemini-1.5-flash-latest',
-      'gemini-1.5-flash',
-      'gemini-2.0-flash',
-      'gemini-2.0-flash-exp',
-      'gemini-1.5-pro-latest',
-      'gemini-1.5-pro',
-      'gemini-pro'
+    const candidateEndpoints = [
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`,
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`,
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
+      `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${apiKey}`,
+      `https://generativelanguage.googleapis.com/v1/models/gemini-2.0-flash:generateContent?key=${apiKey}`,
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-pro:generateContent?key=${apiKey}`
     ];
-    let text = '';
-    let lastError: any = null;
 
-    for (const modelName of candidateModels) {
+    let text = '';
+    let lastErrorMsg = '';
+
+    for (const endpointUrl of candidateEndpoints) {
       try {
-        const model = genAI.getGenerativeModel({ model: modelName });
-        const result = await model.generateContent(prompt);
-        const response = await result.response;
-        text = response.text();
-        if (text) break;
+        const aiRes = await fetch(endpointUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            contents: [{ parts: [{ text: prompt }] }]
+          })
+        });
+
+        const data = await aiRes.json();
+        if (aiRes.ok && data?.candidates?.[0]?.content?.parts?.[0]?.text) {
+          text = data.candidates[0].content.parts[0].text;
+          break;
+        } else if (data?.error?.message) {
+          lastErrorMsg = data.error.message;
+        }
       } catch (err: any) {
-        console.warn(`[Frontend API IA] Tentativa com modelo ${modelName} falhou:`, err?.message || err);
-        lastError = err;
+        lastErrorMsg = err?.message || String(err);
       }
     }
 
-    if (!text && lastError) {
-      throw lastError;
+    if (!text) {
+      throw new Error(lastErrorMsg || 'Não foi possível obter a resposta da IA.');
     }
 
     return NextResponse.json({ advice: text });
@@ -111,12 +119,6 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ 
         error: 'Limite de chamadas da IA atingido temporariamente. Por favor, aguarde cerca de 30 segundos e tente novamente.' 
       }, { status: 429 });
-    }
-
-    if (errMsg.includes('404') || errMsg.includes('not found')) {
-      return NextResponse.json({ 
-        error: 'Sua chave GEMINI_API_KEY não foi encontrada ou é inválida (404). Por favor, crie uma chave gratuita em aistudio.google.com e atualize na Vercel.' 
-      }, { status: 404 });
     }
 
     return NextResponse.json({ error: 'Erro ao gerar conselho com a IA: ' + errMsg }, { status: 500 });

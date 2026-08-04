@@ -71,7 +71,13 @@ export async function GET(req: NextRequest) {
     `;
 
     const genAI = new GoogleGenerativeAI(apiKey);
-    const candidateModels = ['gemini-1.5-flash', 'gemini-2.0-flash', 'gemini-2.5-flash', 'gemini-1.5-pro'];
+    const candidateModels = [
+      'gemini-1.5-flash',
+      'gemini-1.5-flash-8b',
+      'gemini-2.0-flash-exp',
+      'gemini-1.5-pro',
+      'gemini-pro'
+    ];
     let text = '';
     let lastError: any = null;
 
@@ -99,8 +105,14 @@ export async function GET(req: NextRequest) {
 
     if (error?.status === 429 || errMsg.includes('429') || errMsg.includes('quota') || errMsg.includes('RESOURCE_EXHAUSTED')) {
       return NextResponse.json({ 
-        error: 'Limite de chamadas da IA atingido temporariamente. Por favor, aguarde cerca de 30 segundos e clique em Analisar novamente.' 
+        error: 'Limite de chamadas da IA atingido temporariamente. Por favor, aguarde cerca de 30 segundos e tente novamente.' 
       }, { status: 429 });
+    }
+
+    if (errMsg.includes('404') || errMsg.includes('not found')) {
+      return NextResponse.json({ 
+        error: 'Chave da IA não compatível ou modelo indisponível (404). Garanta que sua GEMINI_API_KEY foi gerada em aistudio.google.com.' 
+      }, { status: 404 });
     }
 
     return NextResponse.json({ error: 'Erro ao gerar conselho com a IA: ' + errMsg }, { status: 500 });

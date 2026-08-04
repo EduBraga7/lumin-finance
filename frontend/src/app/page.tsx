@@ -36,6 +36,7 @@ export default function Home() {
   const [dashboard, setDashboard] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
   const [aiAdvice, setAiAdvice] = useState<string | null>(null);
+  const [aiError, setAiError] = useState<string | null>(null);
   const [loadingAi, setLoadingAi] = useState(false);
 
   const { session } = useAuth();
@@ -62,6 +63,7 @@ export default function Home() {
     if (!session?.access_token) return;
     setLoadingAi(true);
     setAiAdvice(null);
+    setAiError(null);
     try {
       const res = await fetch(`${API_URL}/api/ai/advisor?month=${month}&year=${year}`, {
         headers: {
@@ -70,13 +72,13 @@ export default function Home() {
       });
       const data = await res.json();
       if (data.error) {
-        alert(data.error);
+        setAiError(data.error);
       } else {
         setAiAdvice(data.advice);
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
-      alert('Erro ao buscar conselho da IA.');
+      setAiError('Erro ao conectar com o serviço de Inteligência Artificial.');
     } finally {
       setLoadingAi(false);
     }
@@ -206,6 +208,10 @@ export default function Home() {
               <Loader2 className="spinner" size={20} style={{ animation: 'spin 2s linear infinite' }} />
               <span>A Inteligência Artificial está analisando seus gastos...</span>
               <style>{`@keyframes spin { 100% { transform: rotate(360deg); } }`}</style>
+            </div>
+          ) : aiError ? (
+            <div style={{ color: '#f87171', background: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.2)', padding: '1rem', borderRadius: '8px', width: '100%', lineHeight: '1.5' }}>
+              ⚠️ {aiError}
             </div>
           ) : aiAdvice ? (
             <div style={{ color: 'var(--text-primary)', lineHeight: '1.6', whiteSpace: 'pre-wrap' }}>

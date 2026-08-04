@@ -77,6 +77,14 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ advice: text });
   } catch (error: any) {
     console.error('Erro na API de IA:', error);
-    return NextResponse.json({ error: 'Erro ao gerar conselho com a IA: ' + (error.message || error) }, { status: 500 });
+    const errMsg = error?.message || String(error);
+
+    if (error?.status === 429 || errMsg.includes('429') || errMsg.includes('quota') || errMsg.includes('RESOURCE_EXHAUSTED')) {
+      return NextResponse.json({ 
+        error: 'Limite de chamadas da IA atingido temporariamente. Por favor, aguarde cerca de 30 segundos e clique em Analisar novamente.' 
+      }, { status: 429 });
+    }
+
+    return NextResponse.json({ error: 'Erro ao gerar conselho com a IA: ' + errMsg }, { status: 500 });
   }
 }

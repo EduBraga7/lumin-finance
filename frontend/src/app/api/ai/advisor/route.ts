@@ -76,11 +76,16 @@ export async function GET(req: NextRequest) {
       Seja ácido e engraçado, critique onde ele gastou muito (especialmente futilidades como lazer ou alimentação cara) ou elogie de forma irônica se sobrou dinheiro. Não invente dados que não estão listados.
     `;
 
+    // Identificação precisa do provedor pelo formato da chave
+    const isOpenRouterKey = (key: string) => key.startsWith('sk-or-');
+
     let text = '';
     let lastErrorMsg = '';
 
-    // 1. Tentar primeiramente via OpenRouter se a chave for do OpenRouter (começa com sk-or- ou se OPENROUTER_API_KEY foi definida)
-    if (apiKey.startsWith('sk-or-') || openRouterKey) {
+    // 1. Tentar via OpenRouter se houver chave com formato sk-or-
+    const openRouterApiKey = isOpenRouterKey(openRouterKey) ? openRouterKey : (isOpenRouterKey(geminiKey) ? geminiKey : '');
+
+    if (openRouterApiKey) {
       const openRouterModels = [
         'google/gemini-2.0-flash-lite-001',
         'google/gemini-2.0-flash-exp:free',
@@ -94,7 +99,7 @@ export async function GET(req: NextRequest) {
           const openRouterRes = await fetch('https://openrouter.ai/api/v1/chat/completions', {
             method: 'POST',
             headers: {
-              'Authorization': `Bearer ${apiKey}`,
+              'Authorization': `Bearer ${openRouterApiKey}`,
               'Content-Type': 'application/json',
               'HTTP-Referer': 'https://lumin-finance.vercel.app',
               'X-Title': 'Lumin Finance'
@@ -118,15 +123,17 @@ export async function GET(req: NextRequest) {
       }
     }
 
-    // 2. Fallback via Google Gemini REST API se ainda não obteve resposta
-    if (!text) {
+    // 2. Tentar via Google Gemini REST API se houver chave do Google (AQ... ou AIzaSy...)
+    const googleApiKey = !isOpenRouterKey(geminiKey) && geminiKey ? geminiKey : (!isOpenRouterKey(openRouterKey) && openRouterKey ? openRouterKey : '');
+
+    if (!text && googleApiKey) {
       const candidateEndpoints = [
-        `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`,
-        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`,
-        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
-        `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${apiKey}`,
-        `https://generativelanguage.googleapis.com/v1/models/gemini-2.0-flash:generateContent?key=${apiKey}`,
-        `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-pro:generateContent?key=${apiKey}`
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${googleApiKey}`,
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${googleApiKey}`,
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${googleApiKey}`,
+        `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${googleApiKey}`,
+        `https://generativelanguage.googleapis.com/v1/models/gemini-2.0-flash:generateContent?key=${googleApiKey}`,
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-pro:generateContent?key=${googleApiKey}`
       ];
 
       for (const endpointUrl of candidateEndpoints) {
@@ -153,7 +160,7 @@ export async function GET(req: NextRequest) {
     }
 
     if (!text) {
-      throw new Error(lastErrorMsg || 'Não foi possível obter a resposta da IA.');
+      throw new Error(lastErrorMsg || 'Não foi possível obter a resposta da IA. Verifique se a chave de API é válida.');
     }
 
     return NextResponse.json({ advice: text });

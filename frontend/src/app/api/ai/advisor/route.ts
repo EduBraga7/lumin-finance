@@ -16,11 +16,15 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: 'Mês e ano são obrigatórios.' }, { status: 400 });
     }
 
-    const rawKey = process.env.GEMINI_API_KEY || '';
-    const apiKey = rawKey.trim().replace(/^["']|["']$/g, '');
+    const rawOpenRouterKey = process.env.OPENROUTER_API_KEY || '';
+    const rawGeminiKey = process.env.GEMINI_API_KEY || '';
+    const openRouterKey = rawOpenRouterKey.trim().replace(/^["']|["']$/g, '');
+    const geminiKey = rawGeminiKey.trim().replace(/^["']|["']$/g, '');
+
+    const apiKey = openRouterKey || geminiKey;
 
     if (!apiKey) {
-      return NextResponse.json({ error: 'A chave da API do Gemini (GEMINI_API_KEY) não está configurada no servidor.' }, { status: 503 });
+      return NextResponse.json({ error: 'Nenhuma chave de API (OPENROUTER_API_KEY ou GEMINI_API_KEY) foi configurada no servidor.' }, { status: 503 });
     }
 
     const m = parseInt(month, 10);
@@ -72,37 +76,79 @@ export async function GET(req: NextRequest) {
       Seja ácido e engraçado, critique onde ele gastou muito (especialmente futilidades como lazer ou alimentação cara) ou elogie de forma irônica se sobrou dinheiro. Não invente dados que não estão listados.
     `;
 
-    const candidateEndpoints = [
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`,
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`,
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
-      `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${apiKey}`,
-      `https://generativelanguage.googleapis.com/v1/models/gemini-2.0-flash:generateContent?key=${apiKey}`,
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-pro:generateContent?key=${apiKey}`
-    ];
-
     let text = '';
     let lastErrorMsg = '';
 
-    for (const endpointUrl of candidateEndpoints) {
-      try {
-        const aiRes = await fetch(endpointUrl, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            contents: [{ parts: [{ text: prompt }] }]
-          })
-        });
+    // 1. Tentar primeiramente via OpenRouter se a chave for do OpenRouter (começa com sk-or- ou se OPENROUTER_API_KEY foi definida)
+    if (apiKey.startsWith('sk-or-') || openRouterKey) {
+      const openRouterModels = [
+        'google/gemini-2.0-flash-lite-001',
+        'google/gemini-2.0-flash-exp:free',
+        'meta-llama/llama-3.3-70b-instruct:free',
+        'deepseek/deepseek-r1:free',
+        'google/gemini-flash-1.5'
+      ];
 
-        const data = await aiRes.json();
-        if (aiRes.ok && data?.candidates?.[0]?.content?.parts?.[0]?.text) {
-          text = data.candidates[0].content.parts[0].text;
-          break;
-        } else if (data?.error?.message) {
-          lastErrorMsg = data.error.message;
+      for (const modelName of openRouterModels) {
+        try {
+          const openRouterRes = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${apiKey}`,
+              'Content-Type': 'application/json',
+              'HTTP-Referer': 'https://lumin-finance.vercel.app',
+              'X-Title': 'Lumin Finance'
+            },
+            body: JSON.stringify({
+              model: modelName,
+              messages: [{ role: 'user', content: prompt }]
+            })
+          });
+
+          const data = await openRouterRes.json();
+          if (openRouterRes.ok && data?.choices?.[0]?.message?.content) {
+            text = data.choices[0].message.content;
+            break;
+          } else if (data?.error?.message) {
+            lastErrorMsg = data.error.message;
+          }
+        } catch (err: any) {
+          lastErrorMsg = err?.message || String(err);
         }
-      } catch (err: any) {
-        lastErrorMsg = err?.message || String(err);
+      }
+    }
+
+    // 2. Fallback via Google Gemini REST API se ainda não obteve resposta
+    if (!text) {
+      const candidateEndpoints = [
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`,
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`,
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
+        `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${apiKey}`,
+        `https://generativelanguage.googleapis.com/v1/models/gemini-2.0-flash:generateContent?key=${apiKey}`,
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-pro:generateContent?key=${apiKey}`
+      ];
+
+      for (const endpointUrl of candidateEndpoints) {
+        try {
+          const aiRes = await fetch(endpointUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              contents: [{ parts: [{ text: prompt }] }]
+            })
+          });
+
+          const data = await aiRes.json();
+          if (aiRes.ok && data?.candidates?.[0]?.content?.parts?.[0]?.text) {
+            text = data.candidates[0].content.parts[0].text;
+            break;
+          } else if (data?.error?.message) {
+            lastErrorMsg = data.error.message;
+          }
+        } catch (err: any) {
+          lastErrorMsg = err?.message || String(err);
+        }
       }
     }
 

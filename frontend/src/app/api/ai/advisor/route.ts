@@ -68,11 +68,26 @@ export async function GET(req: NextRequest) {
     `;
 
     const genAI = new GoogleGenerativeAI(apiKey);
-    const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+    const candidateModels = ['gemini-1.5-flash-latest', 'gemini-2.0-flash', 'gemini-1.5-flash', 'gemini-pro'];
+    let text = '';
+    let lastError: any = null;
 
-    const result = await model.generateContent(prompt);
-    const response = await result.response;
-    const text = response.text();
+    for (const modelName of candidateModels) {
+      try {
+        const model = genAI.getGenerativeModel({ model: modelName });
+        const result = await model.generateContent(prompt);
+        const response = await result.response;
+        text = response.text();
+        if (text) break;
+      } catch (err: any) {
+        console.warn(`Tentativa com modelo ${modelName} falhou, tentando próximo...`, err?.message || err);
+        lastError = err;
+      }
+    }
+
+    if (!text && lastError) {
+      throw lastError;
+    }
 
     return NextResponse.json({ advice: text });
   } catch (error: any) {

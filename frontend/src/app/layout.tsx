@@ -36,6 +36,8 @@ export const viewport = {
   viewportFit: "cover",
 };
 
+import RegisterSW from "@/components/RegisterSW";
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -44,6 +46,7 @@ export default function RootLayout({
   return (
     <html lang="pt-BR">
       <body>
+        <RegisterSW />
         <AuthProvider>
           <DateFilterProvider>
             <AppLayoutWrapper>{children}</AppLayoutWrapper>

@@ -16,7 +16,9 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: 'Mês e ano são obrigatórios.' }, { status: 400 });
     }
 
-    const apiKey = process.env.GEMINI_API_KEY;
+    const rawKey = process.env.GEMINI_API_KEY || '';
+    const apiKey = rawKey.trim().replace(/^["']|["']$/g, '');
+
     if (!apiKey) {
       return NextResponse.json({ error: 'A chave da API do Gemini (GEMINI_API_KEY) não está configurada no servidor.' }, { status: 503 });
     }
@@ -72,9 +74,11 @@ export async function GET(req: NextRequest) {
 
     const genAI = new GoogleGenerativeAI(apiKey);
     const candidateModels = [
+      'gemini-1.5-flash-latest',
       'gemini-1.5-flash',
-      'gemini-1.5-flash-8b',
+      'gemini-2.0-flash',
       'gemini-2.0-flash-exp',
+      'gemini-1.5-pro-latest',
       'gemini-1.5-pro',
       'gemini-pro'
     ];
@@ -111,7 +115,7 @@ export async function GET(req: NextRequest) {
 
     if (errMsg.includes('404') || errMsg.includes('not found')) {
       return NextResponse.json({ 
-        error: 'Chave da IA não compatível ou modelo indisponível (404). Garanta que sua GEMINI_API_KEY foi gerada em aistudio.google.com.' 
+        error: 'Sua chave GEMINI_API_KEY não foi encontrada ou é inválida (404). Por favor, crie uma chave gratuita em aistudio.google.com e atualize na Vercel.' 
       }, { status: 404 });
     }
 

@@ -36,22 +36,17 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const pathname = usePathname();
 
   useEffect(() => {
-    // Remover resquícios antigos do localStorage por segurança
-    localStorage.removeItem('lumin_token');
-
     const savedUser = localStorage.getItem('lumin_user');
-    const savedToken = sessionStorage.getItem('lumin_token_session'); // mantido apenas em memória de sessão temporária se necessário
+    const savedToken = localStorage.getItem('lumin_token');
     
-    if (savedUser) {
+    if (savedUser && savedToken) {
       try {
         setUser(JSON.parse(savedUser));
-        if (savedToken) {
-          setSession({ access_token: savedToken });
-        } else {
-          setSession({ access_token: 'cookie_session' });
-        }
+        setSession({ access_token: savedToken });
       } catch (e) {
         console.error('Erro ao restaurar usuário:', e);
+        localStorage.removeItem('lumin_user');
+        localStorage.removeItem('lumin_token');
       }
     }
     setLoading(false);
@@ -70,7 +65,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   const signIn = (user: User, token: string) => {
     localStorage.setItem('lumin_user', JSON.stringify(user));
-    sessionStorage.setItem('lumin_token_session', token);
+    localStorage.setItem('lumin_token', token);
     setSession({ access_token: token });
     setUser(user);
     router.push('/');
@@ -83,7 +78,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       console.error('Erro ao encerrar sessão no servidor:', e);
     }
     localStorage.removeItem('lumin_user');
-    sessionStorage.removeItem('lumin_token_session');
+    localStorage.removeItem('lumin_token');
     setSession(null);
     setUser(null);
     router.push('/login');

@@ -29,84 +29,158 @@ const requireAuth = (req, res, next) => {
   }
 };
 
+function getCategoryNature(categoryName) {
+  const norm = (categoryName || '')
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .trim();
+
+  if (/educaca|curso|livro|faculdade|estudo|idioma|capacit|pos-grad|treina|workshop|mentoria|escola/.test(norm)) {
+    return 'human_capital';
+  }
+  if (/saude|medic|remedio|farmacia|consulta|hospital|plano de saude|terapia|psicolog|moradia|aluguel|condominio|iptu|energia|luz|agua|gas|internet|supermercado|alimentacao|mercado|feira|transporte|combustivel|metro|onibus|uber/.test(norm)) {
+    return 'essential';
+  }
+  if (/invest|reserva|poupanca|previdencia|seguro|emprestimo|financiamento|fatura|divida|imposto|tributo/.test(norm)) {
+    return 'financial';
+  }
+  return 'lifestyle';
+}
+
 function generateLocalDiagnosis(totalIncome, totalExpense, balance, expenseByCategory, month, year) {
   const monthName = MONTH_NAMES[month - 1];
+
+  const fmt = val =>
+    new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val);
 
   if (totalIncome === 0 && totalExpense === 0) {
     return {
       status: 'warning',
       statusText: 'Sem Movimentações',
-      summary: `Ainda não identifiquei movimentações financeiras em ${monthName} de ${year}. Adicione alguns lançamentos para liberar o diagnóstico completo!`,
+      summary: `Nenhuma movimentação registrada em ${monthName} de ${year}. Cadastre suas primeiras receitas e despesas no Extrato para desbloquear a inteligência preditiva.`,
       insights: [
         {
           type: 'tip',
-          title: 'Primeiros Passos',
-          description: 'Cadastre sua principal fonte de renda e despesas fixas para liberar análises preditivas.'
+          title: 'Primeiros Passos Financeiros',
+          description: 'Cadastre sua principal fonte de receita e seus custos fixos mensais para ativarmos o cálculo de autonomia e projeção patrimonial.'
         }
       ],
-      advice: `Você ainda não registrou movimentações em ${monthName} de ${year}. Comece registrando suas receitas e despesas no Extrato.`
+      advice: `Para iniciar seu planejamento, lance no Extrato suas fontes de receita e principais contas fixas de ${monthName}.`
     };
   }
 
-  const savingsRate = totalIncome > 0 ? ((balance / totalIncome) * 100) : -100;
-  const sortedCategories = Object.entries(expenseByCategory || {}).sort(([, a], [, b]) => b - a);
-  const topCategory = sortedCategories[0];
-  const secondCategory = sortedCategories[1];
-  const topCatPct = totalExpense > 0 && topCategory ? ((topCategory[1] / totalExpense) * 100) : 0;
+  const savingsRate = totalIncome > 0 ? ((balance / totalIncome) * 100) : (balance >= 0 ? 100 : -100);
+
+  let humanCapitalTotal = 0;
+  let essentialTotal = 0;
+  let lifestyleTotal = 0;
+
+  Object.entries(expenseByCategory || {}).forEach(([cat, amount]) => {
+    const val = Number(amount) || 0;
+    const nature = getCategoryNature(cat);
+    if (nature === 'human_capital') humanCapitalTotal += val;
+    else if (nature === 'essential') essentialTotal += val;
+    else if (nature === 'lifestyle') lifestyleTotal += val;
+    else essentialTotal += val;
+  });
+
+  const runwayMonths = totalExpense > 0 && balance > 0 ? (balance / totalExpense) : 0;
+  const monthlyRate = 0.105 / 12;
+  let projectedWealth12m = 0;
+  let projectedMonthlyPassive = 0;
+
+  if (balance > 0) {
+    const n = 12;
+    projectedWealth12m = balance * ((Math.pow(1 + monthlyRate, n) - 1) / monthlyRate);
+    projectedMonthlyPassive = projectedWealth12m * monthlyRate;
+  }
 
   let status = 'good';
   let statusText = 'Orçamento Equilibrado';
-  let summary = '';
-  const insights = [];
 
   if (balance < 0) {
     status = 'critical';
     statusText = 'Déficit no Período';
-    summary = `Atenção: suas despesas superaram as receitas em R$ ${Math.abs(balance).toFixed(2)} em ${monthName} de ${year}.`;
-    insights.push({
-      type: 'warning',
-      title: 'Despesas Superando Entradas',
-      description: `O saldo está negativo em R$ ${Math.abs(balance).toFixed(2)}. Priorize cortar gastos supérfluos.`
-    });
-  } else if (savingsRate >= 25) {
+  } else if (savingsRate >= 30) {
     status = 'excellent';
-    statusText = 'Excelente Poupança';
-    summary = `Parabéns! Você economizou ${savingsRate.toFixed(1)}% dos seus ganhos em ${monthName} de ${year}, acumulando R$ ${balance.toFixed(2)} em caixa.`;
-    insights.push({
-      type: 'positive',
-      title: 'Taxa de Poupança Alta',
-      description: `Mais de 25% da renda retida. Excelente momento para fortalecer sua reserva.`
-    });
-  } else {
+    statusText = 'Poupança de Alto Nível';
+  } else if (savingsRate >= 15) {
     status = 'good';
     statusText = 'Orçamento Saudável';
-    summary = `Você encerrou ${monthName} com saldo positivo de R$ ${balance.toFixed(2)} (${savingsRate.toFixed(1)}% poupado).`;
+  } else {
+    status = 'warning';
+    statusText = 'Margem de Segurança Estreita';
+  }
+
+  const insights = [];
+
+  if (balance > 0) {
     insights.push({
       type: 'positive',
-      title: 'Saldo sob Controle',
-      description: `Receitas cobriram as despesas. Busque manter essa consistência.`
+      title: `Autonomia: +${runwayMonths.toFixed(1)} meses de custo de vida`,
+      description: `O excedente deste mês (${fmt(balance)}) banca sozinho ${runwayMonths.toFixed(1)}x todo o seu custo de vida atual (${fmt(totalExpense)}). Você está construindo uma barreira de segurança sólida contra imprevistos.`
     });
-  }
-
-  if (topCategory && topCatPct > 35) {
+  } else {
     insights.push({
       type: 'warning',
-      title: `Concentração em ${topCategory[0]}`,
-      description: `${topCatPct.toFixed(1)}% dos gastos estão concentrados em ${topCategory[0]} (R$ ${topCategory[1].toFixed(2)}).`
+      title: 'Alerta de Queima de Caixa',
+      description: `O mês fechou com déficit de ${fmt(Math.abs(balance))}. Para evitar o uso de limites caros, congele compras discricionárias de estilo de vida nos próximos 30 dias.`
     });
   }
 
-  if (secondCategory) {
+  if (humanCapitalTotal > 0) {
+    const hcPctIncome = totalIncome > 0 ? ((humanCapitalTotal / totalIncome) * 100) : 0;
+    insights.push({
+      type: 'positive',
+      title: `Aporte em Capital Humano (${fmt(humanCapitalTotal)})`,
+      description: `Você direcionou ${hcPctIncome.toFixed(1)}% da sua renda em Educação e desenvolvimento pessoal. Este é o ativo de maior retorno comprovado no longo prazo. Mantenha o foco em alavancar seu poder de ganho.`
+    });
+  } else if (lifestyleTotal > 0 && totalExpense > 0 && (lifestyleTotal / totalExpense) > 0.35) {
+    const lifePct = ((lifestyleTotal / totalExpense) * 100).toFixed(0);
+    insights.push({
+      type: 'warning',
+      title: `Atenção a Gastos de Estilo de Vida (${lifePct}%)`,
+      description: `Categorias discricionárias (Lazer, Delivery, Compras) consumiram ${fmt(lifestyleTotal)}. Pequenos ajustes conscientes aqui aceleram significativamente seus aportes de investimento.`
+    });
+  } else {
+    const essPct = totalIncome > 0 ? ((essentialTotal / totalIncome) * 100).toFixed(0) : '0';
     insights.push({
       type: 'tip',
-      title: `Segundo Maior Gasto: ${secondCategory[0]}`,
-      description: `Consumiu R$ ${secondCategory[1].toFixed(2)} no período.`
+      title: 'Estrutura de Custos Essenciais',
+      description: `Seus gastos essenciais consumiram ${essPct}% da sua receita. Manter o custo de vida fixo controlado é a chave que permite ter flexibilidade e paz mental financeira.`
     });
   }
 
-  const advice = `Análise de ${monthName}/${year}: Receitas de R$ ${totalIncome.toFixed(2)}, despesas de R$ ${totalExpense.toFixed(2)}, saldo de R$ ${balance.toFixed(2)} (${savingsRate.toFixed(1)}% poupado). ${topCategory ? `Principal gasto: ${topCategory[0]} (R$ ${topCategory[1].toFixed(2)}).` : ''}`;
+  if (balance > 0) {
+    insights.push({
+      type: 'tip',
+      title: `Projeção 12 Meses: ${fmt(projectedWealth12m)}`,
+      description: `Mantendo aportes mensais de ${fmt(balance)} a 100% CDI (~10,5% a.a.), você acumulará ${fmt(projectedWealth12m)} em 1 ano, gerando aproximadamente ${fmt(projectedMonthlyPassive)}/mês de renda passiva sem precisar trabalhar.`
+    });
+  } else {
+    insights.push({
+      type: 'tip',
+      title: 'Recuperação de Capacidade de Aporte',
+      description: 'Reestruture seus gastos variáveis para voltar a ter saldo positivo. Mesmo pequenos aportes ativam a bola de neve dos juros compostos a seu favor.'
+    });
+  }
 
-  return { status, statusText, summary, insights, advice };
+  let strategicAdvice = '';
+  if (balance > 0 && savingsRate >= 30) {
+    const reserveTarget = totalExpense * 6;
+    strategicAdvice = `Sua saúde financeira está em nível de excelência, retendo ${savingsRate.toFixed(1)}% de margem livre e mantendo um custo de vida enxuto. ${humanCapitalTotal > 0 ? `O grande destaque positivo foi priorizar seu desenvolvimento (Educação - ${fmt(humanCapitalTotal)}) sem desbalancear as contas.` : ''}\n\nDiretriz estratégica para o excedente de ${fmt(balance)}:\n1. Caso ainda não tenha montado sua Reserva de Emergência (meta: ${fmt(reserveTarget)}, equivalente a 6 meses de despesas), direcione 100% do saldo para Tesouro Selic ou CDB com liquidez diária.\n2. Se sua reserva já estiver completa, é hora de diversificar parte dos novos aportes em ativos com proteção contra a inflação (IPCA+) para multiplicar seu patrimônio no médio e longo prazo.`;
+  } else if (balance > 0) {
+    strategicAdvice = `Seu fluxo de caixa encerrou no azul com taxa de poupança positiva de ${savingsRate.toFixed(1)}%. Você tem fôlego orçamentário para manter a estabilidade.\n\nPróximo passo recomendado: Estabeleça a meta de automatizar uma transferência de pelo menos 20% da sua receita para sua conta de investimentos logo no dia que o pagamento cair, garantindo consistência patrimonial mês após mês.`;
+  } else {
+    strategicAdvice = `O fechamento do mês indicou que as saídas superaram a renda em ${fmt(Math.abs(balance))}. Isso exige ajuste preventivo de rota.\n\nPlano tático:\n1. Faça uma varredura nas assinaturas e gastos de conveniência/delivery nos próximos 15 dias.\n2. Não parcele novas compras em cartões enquanto o fluxo de caixa mensal não voltar a fechar com folga positiva.`;
+  }
+
+  const summary = balance >= 0
+    ? `Excelente disciplina orçamentária: você reteve ${savingsRate.toFixed(1)}% dos seus ganhos em ${monthName} de ${year}, gerando ${fmt(balance)} em liquidez livre.`
+    : `Atenção ao fluxo de caixa: suas despesas superaram as entradas em ${fmt(Math.abs(balance))} em ${monthName} de ${year}.`;
+
+  return { status, statusText, summary, insights, advice: strategicAdvice };
 }
 
 async function saveAnalysisToDatabase(payload) {
@@ -170,7 +244,6 @@ router.get('/advisor', requireAuth, async (req, res) => {
     const y = parseInt(year, 10);
     const monthKey = `${y}-${String(m).padStart(2, '0')}`;
 
-    // 1. Se não for refresh forçado, verifica se já existe análise no banco para este mês
     if (refresh !== 'true') {
       try {
         let cached = null;
@@ -243,20 +316,21 @@ router.get('/advisor', requireAuth, async (req, res) => {
     if (apiKey && apiKey !== 'placeholder_gemini_key') {
       try {
         const prompt = `
-          Atue como um mentor financeiro inteligente.
-          Você está analisando as contas do usuário no mês ${month}/${year}.
-          
-          Dados financeiros:
-          - Ganhou (Receitas): R$ ${totalIncome.toFixed(2)}
-          - Gastou (Despesas): R$ ${totalExpense.toFixed(2)}
-          - Saldo final do mês: R$ ${balance.toFixed(2)}
-          
-          Divisão das despesas:
+          Você é um Consultor Financeiro CFP (Certified Financial Planner) de alto nível.
+          Analise o mês ${month}/${year} do cliente:
+          - Receitas: R$ ${totalIncome.toFixed(2)}
+          - Despesas: R$ ${totalExpense.toFixed(2)}
+          - Saldo Livre: R$ ${balance.toFixed(2)}
+          - Gastos:
           ${Object.keys(expenseByCategory).length > 0 
-            ? Object.entries(expenseByCategory).map(([cat, val]) => `- ${cat}: R$ ${val.toFixed(2)}`).join('\n')
-            : '- Nenhuma despesa registrada neste mês.'}
+            ? Object.entries(expenseByCategory).map(([cat, val]) => `  * ${cat}: R$ ${val.toFixed(2)}`).join('\n')
+            : '  * Sem despesas no mês.'}
           
-          Escreva um parecer direto e acionável em 2 a 3 parágrafos curtos.
+          DIRETRIZES:
+          1. Não repita números óbvios.
+          2. Considere Educação e Cursos como investimento em Capital Humano de alto valor, não custo.
+          3. Dê direcionamento prático para o saldo livre (reserva de emergência de 6 meses em 100% CDI, tesouro IPCA+).
+          4. Máximo 2 a 3 parágrafos curtos, inspiradores e práticos.
         `;
 
         const genAI = new GoogleGenerativeAI(apiKey);
@@ -277,7 +351,7 @@ router.get('/advisor', requireAuth, async (req, res) => {
           }
         }
       } catch (aiErr) {
-        console.warn('Falha na chamada ao Gemini SDK:', aiErr?.message || aiErr);
+        console.warn('Falha no Gemini SDK:', aiErr?.message || aiErr);
       }
     }
 

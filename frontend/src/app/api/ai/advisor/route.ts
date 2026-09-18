@@ -6,6 +6,32 @@ const MONTH_NAMES = [
   "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"
 ];
 
+function getCategoryNature(categoryName: string): 'human_capital' | 'essential' | 'lifestyle' | 'financial' {
+  const norm = (categoryName || '')
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .trim();
+
+  // 1. Investimento em Capital Humano & Futuro
+  if (/educaca|curso|livro|faculdade|estudo|idioma|capacit|pos-grad|treina|workshop|mentoria|escola/.test(norm)) {
+    return 'human_capital';
+  }
+
+  // 2. Despesas Essenciais / Saúde / Sobrevivência
+  if (/saude|medic|remedio|farmacia|consulta|hospital|plano de saude|terapia|psicolog|moradia|aluguel|condominio|iptu|energia|luz|agua|gas|internet|supermercado|alimentacao|mercado|feira|transporte|combustivel|metro|onibus|uber/.test(norm)) {
+    return 'essential';
+  }
+
+  // 3. Compromissos Financeiros / Patrimônio
+  if (/invest|reserva|poupanca|previdencia|seguro|emprestimo|financiamento|fatura|divida|imposto|tributo/.test(norm)) {
+    return 'financial';
+  }
+
+  // 4. Estilo de Vida & Discricionários (Lazer, restaurantes, compras, delivery)
+  return 'lifestyle';
+}
+
 function generateLocalDiagnosis(
   totalIncome: number,
   totalExpense: number,
@@ -16,94 +42,149 @@ function generateLocalDiagnosis(
 ) {
   const monthName = MONTH_NAMES[month - 1];
 
+  const fmt = (val: number) =>
+    new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val);
+
   if (totalIncome === 0 && totalExpense === 0) {
     return {
       status: 'warning',
       statusText: 'Sem Movimentações',
-      summary: `Ainda não identifiquei movimentações financeiras em ${monthName} de ${year}. Adicione alguns lançamentos para liberar o diagnóstico completo!`,
+      summary: `Nenhuma movimentação registrada em ${monthName} de ${year}. Cadastre suas primeiras receitas e despesas no Extrato para desbloquear a inteligência preditiva.`,
       insights: [
         {
           type: 'tip',
-          title: 'Primeiros Passos',
-          description: 'Cadastre sua principal fonte de renda e despesas fixas para liberar análises preditivas.'
+          title: 'Primeiros Passos Financeiros',
+          description: 'Cadastre sua principal fonte de receita e seus custos fixos mensais para ativarmos o cálculo de autonomia e projeção patrimonial.'
         }
       ],
-      advice: `Você ainda não registrou receitas nem despesas em ${monthName} de ${year}. Para que eu possa analisar seus padrões de gastos e dar conselhos estratégicos, comece cadastrando seus lançamentos no Extrato.`
+      advice: `Para iniciar seu planejamento, lance no Extrato suas fontes de receita e principais contas fixas de ${monthName}.`
     };
   }
 
-  const savingsRate = totalIncome > 0 ? ((balance / totalIncome) * 100) : -100;
-  const sortedCategories = Object.entries(expenseByCategory || {}).sort(([, a], [, b]) => b - a);
-  const topCategory = sortedCategories[0];
-  const secondCategory = sortedCategories[1];
-  const topCatPct = totalExpense > 0 && topCategory ? ((topCategory[1] / totalExpense) * 100) : 0;
+  const savingsRate = totalIncome > 0 ? ((balance / totalIncome) * 100) : (balance >= 0 ? 100 : -100);
+
+  let humanCapitalTotal = 0;
+  let essentialTotal = 0;
+  let lifestyleTotal = 0;
+
+  Object.entries(expenseByCategory || {}).forEach(([cat, amount]) => {
+    const val = Number(amount) || 0;
+    const nature = getCategoryNature(cat);
+    if (nature === 'human_capital') humanCapitalTotal += val;
+    else if (nature === 'essential') essentialTotal += val;
+    else if (nature === 'lifestyle') lifestyleTotal += val;
+    else essentialTotal += val;
+  });
+
+  const runwayMonths = totalExpense > 0 && balance > 0 ? (balance / totalExpense) : 0;
+  const monthlyRate = 0.105 / 12;
+  let projectedWealth12m = 0;
+  let projectedMonthlyPassive = 0;
+
+  if (balance > 0) {
+    const n = 12;
+    projectedWealth12m = balance * ((Math.pow(1 + monthlyRate, n) - 1) / monthlyRate);
+    projectedMonthlyPassive = projectedWealth12m * monthlyRate;
+  }
 
   let status = 'good';
   let statusText = 'Orçamento Equilibrado';
-  let summary = '';
-  const insights: Array<{ type: string; title: string; description: string }> = [];
 
   if (balance < 0) {
     status = 'critical';
     statusText = 'Déficit no Período';
-    summary = `Atenção: suas despesas superaram as receitas em R$ ${Math.abs(balance).toFixed(2)} em ${monthName} de ${year}. É recomendável cortar gastos não essenciais imediatamente.`;
-    insights.push({
-      type: 'warning',
-      title: 'Despesas Superando Entradas',
-      description: `O saldo está negativo em R$ ${Math.abs(balance).toFixed(2)}. Priorize quitar contas essenciais e evite compras a prazo.`
-    });
-  } else if (savingsRate >= 25) {
+  } else if (savingsRate >= 30) {
     status = 'excellent';
-    statusText = 'Excelente Poupança';
-    summary = `Parabéns! Você economizou ${savingsRate.toFixed(1)}% dos seus ganhos em ${monthName} de ${year}, acumulando R$ ${balance.toFixed(2)} em caixa.`;
-    insights.push({
-      type: 'positive',
-      title: 'Taxa de Poupança Alta',
-      description: `Você reteve mais de 25% da sua renda (${savingsRate.toFixed(1)}%). Considere investir parte desse excedente em uma reserva de emergência ou renda fixa.`
-    });
-  } else {
+    statusText = 'Poupança de Alto Nível';
+  } else if (savingsRate >= 15) {
     status = 'good';
     statusText = 'Orçamento Saudável';
-    summary = `Você encerrou ${monthName} com saldo positivo de R$ ${balance.toFixed(2)} (${savingsRate.toFixed(1)}% poupado). Suas finanças estão sob controle.`;
+  } else {
+    status = 'warning';
+    statusText = 'Margem de Segurança Estreita';
+  }
+
+  const insights: Array<{ type: string; title: string; description: string }> = [];
+
+  // 1. Autonomia & Cobertura
+  if (balance > 0) {
     insights.push({
       type: 'positive',
-      title: 'Saldo sob Controle',
-      description: `Você manteve as saídas menores que as entradas em ${monthName}. Procure aumentar sua taxa de poupança para pelo menos 20%.`
+      title: `Autonomia: +${runwayMonths.toFixed(1)} meses de custo de vida`,
+      description: `O excedente deste mês (${fmt(balance)}) banca sozinho ${runwayMonths.toFixed(1)}x todo o seu custo de vida atual (${fmt(totalExpense)}). Você está construindo uma barreira de segurança sólida contra imprevistos.`
     });
-  }
-
-  if (topCategory && topCatPct > 35) {
+  } else {
     insights.push({
       type: 'warning',
-      title: `Concentração em ${topCategory[0]}`,
-      description: `${topCatPct.toFixed(1)}% dos seus gastos estão concentrados em ${topCategory[0]} (R$ ${topCategory[1].toFixed(2)}). Avalie se é possível renegociar despesas desse grupo.`
+      title: 'Alerta de Queima de Caixa',
+      description: `O mês fechou com déficit de ${fmt(Math.abs(balance))}. Para evitar o uso de limites caros, congele compras discricionárias de estilo de vida nos próximos 30 dias.`
     });
   }
 
-  if (secondCategory) {
+  // 2. Capital Humano vs Estilo de Vida
+  if (humanCapitalTotal > 0) {
+    const hcPctIncome = totalIncome > 0 ? ((humanCapitalTotal / totalIncome) * 100) : 0;
+    insights.push({
+      type: 'positive',
+      title: `Aporte em Capital Humano (${fmt(humanCapitalTotal)})`,
+      description: `Você direcionou ${hcPctIncome.toFixed(1)}% da sua renda em Educação e desenvolvimento pessoal. Este é o ativo de maior retorno comprovado no longo prazo. Mantenha o foco em alavancar seu poder de ganho.`
+    });
+  } else if (lifestyleTotal > 0 && totalExpense > 0 && (lifestyleTotal / totalExpense) > 0.35) {
+    const lifePct = ((lifestyleTotal / totalExpense) * 100).toFixed(0);
+    insights.push({
+      type: 'warning',
+      title: `Atenção a Gastos de Estilo de Vida (${lifePct}%)`,
+      description: `Categorias discricionárias (Lazer, Delivery, Compras) consumiram ${fmt(lifestyleTotal)}. Pequenos ajustes conscientes aqui aceleram significativamente seus aportes de investimento.`
+    });
+  } else {
+    const essPct = totalIncome > 0 ? ((essentialTotal / totalIncome) * 100).toFixed(0) : '0';
     insights.push({
       type: 'tip',
-      title: `Segundo Maior Gasto: ${secondCategory[0]}`,
-      description: `Sua segunda maior categoria consumiu R$ ${secondCategory[1].toFixed(2)}. Monitorar despesas recorrentes aqui pode gerar economia rápida.`
+      title: 'Estrutura de Custos Essenciais',
+      description: `Seus gastos essenciais consumiram ${essPct}% da sua receita. Manter o custo de vida fixo controlado é a chave que permite ter flexibilidade e paz mental financeira.`
     });
   }
 
-  const advice = `Análise de ${monthName}/${year}: Você faturou R$ ${totalIncome.toFixed(2)} e gastou R$ ${totalExpense.toFixed(2)}, fechando com saldo de R$ ${balance.toFixed(2)} (${savingsRate.toFixed(1)}% de taxa de poupança). ${topCategory ? `Sua maior despesa foi em ${topCategory[0]} (R$ ${topCategory[1].toFixed(2)}).` : ''} Continue mantendo o controle rigoroso dos seus lançamentos para construir previsibilidade financeira.`;
+  // 3. Projeção de Juros Compostos
+  if (balance > 0) {
+    insights.push({
+      type: 'tip',
+      title: `Projeção 12 Meses: ${fmt(projectedWealth12m)}`,
+      description: `Mantendo aportes mensais de ${fmt(balance)} a 100% CDI (~10,5% a.a.), você acumulará ${fmt(projectedWealth12m)} em 1 ano, gerando aproximadamente ${fmt(projectedMonthlyPassive)}/mês de renda passiva sem precisar trabalhar.`
+    });
+  } else {
+    insights.push({
+      type: 'tip',
+      title: 'Recuperação de Capacidade de Aporte',
+      description: 'Reestruture seus gastos variáveis para voltar a ter saldo positivo. Mesmo pequenos aportes ativam a bola de neve dos juros compostos a seu favor.'
+    });
+  }
 
-  return { status, statusText, summary, insights, advice };
+  let strategicAdvice = '';
+  if (balance > 0 && savingsRate >= 30) {
+    const reserveTarget = totalExpense * 6;
+    strategicAdvice = `Sua saúde financeira está em nível de excelência, retendo ${savingsRate.toFixed(1)}% de margem livre e mantendo um custo de vida enxuto. ${humanCapitalTotal > 0 ? `O grande destaque positivo foi priorizar seu desenvolvimento (Educação - ${fmt(humanCapitalTotal)}) sem desbalancear as contas.` : ''}\n\nDiretriz estratégica para o excedente de ${fmt(balance)}:\n1. Caso ainda não tenha montado sua Reserva de Emergência (meta: ${fmt(reserveTarget)}, equivalente a 6 meses de despesas), direcione 100% do saldo para Tesouro Selic ou CDB com liquidez diária.\n2. Se sua reserva já estiver completa, é hora de diversificar parte dos novos aportes em ativos com proteção contra a inflação (IPCA+) para multiplicar seu patrimônio no médio e longo prazo.`;
+  } else if (balance > 0) {
+    strategicAdvice = `Seu fluxo de caixa encerrou no azul com taxa de poupança positiva de ${savingsRate.toFixed(1)}%. Você tem fôlego orçamentário para manter a estabilidade.\n\nPróximo passo recomendado: Estabeleça a meta de automatizar uma transferência de pelo menos 20% da sua receita para sua conta de investimentos logo no dia que o pagamento cair, garantindo consistência patrimonial mês após mês.`;
+  } else {
+    strategicAdvice = `O fechamento do mês indicou que as saídas superaram a renda em ${fmt(Math.abs(balance))}. Isso exige ajuste preventivo de rota.\n\nPlano tático:\n1. Faça uma varredura nas assinaturas e gastos de conveniência/delivery nos próximos 15 dias.\n2. Não parcele novas compras em cartões enquanto o fluxo de caixa mensal não voltar a fechar com folga positiva.`;
+  }
+
+  const summary = balance >= 0
+    ? `Excelente disciplina orçamentária: você reteve ${savingsRate.toFixed(1)}% dos seus ganhos em ${monthName} de ${year}, gerando ${fmt(balance)} em liquidez livre.`
+    : `Atenção ao fluxo de caixa: suas despesas superaram as entradas em ${fmt(Math.abs(balance))} em ${monthName} de ${year}.`;
+
+  return { status, statusText, summary, insights, advice: strategicAdvice };
 }
 
 // Helper para salvar com fallback de compatibilidade de colunas
 async function saveAnalysisToDatabase(payload: any) {
-  // 1. Tentar salvar payload completo com conflito em (user_id, month, year)
   let { data, error } = await supabaseServer
     .from('ai_analyses')
     .upsert(payload, { onConflict: 'user_id,month,year' })
     .select();
 
-  // 2. Se falhar, tentar conflito em (user_id, month_key)
   if (error) {
-    console.warn('Upsert (user_id,month,year) falhou, tentando (user_id,month_key):', error.message);
     const res2 = await supabaseServer
       .from('ai_analyses')
       .upsert(payload, { onConflict: 'user_id,month_key' })
@@ -112,9 +193,7 @@ async function saveAnalysisToDatabase(payload: any) {
     data = res2.data;
   }
 
-  // 3. Se falhar por causa de colunas extras (ex: status_text ou month_key não existem), tentar payload simplificado
   if (error) {
-    console.warn('Upsert de colunas completas falhou, tentando colunas básicas:', error.message);
     const basicPayload = {
       user_id: payload.user_id,
       month: payload.month,
@@ -132,9 +211,7 @@ async function saveAnalysisToDatabase(payload: any) {
     data = res3.data;
   }
 
-  // 4. Último fallback: apenas advice, month, year
   if (error) {
-    console.warn('Tentando fallback mínimo em ai_analyses:', error.message);
     const minimalPayload = {
       user_id: payload.user_id,
       month: payload.month,
@@ -148,12 +225,6 @@ async function saveAnalysisToDatabase(payload: any) {
       .select();
     error = res4.error;
     data = res4.data;
-  }
-
-  if (error) {
-    console.error('❌ Não foi possível salvar em ai_analyses no Supabase:', error.message);
-  } else {
-    console.log('✅ Análise da IA salva com sucesso no Supabase:', payload.month_key);
   }
 
   return { data, error };
@@ -183,7 +254,6 @@ export async function GET(req: NextRequest) {
       try {
         let cached: any = null;
 
-        // Tenta buscar por (month, year)
         const { data: byMonthYear } = await supabaseServer
           .from('ai_analyses')
           .select('*')
@@ -195,7 +265,6 @@ export async function GET(req: NextRequest) {
         if (byMonthYear) {
           cached = byMonthYear;
         } else {
-          // Tenta buscar por month_key
           const { data: byMonthKey } = await supabaseServer
             .from('ai_analyses')
             .select('*')
@@ -221,21 +290,17 @@ export async function GET(req: NextRequest) {
       }
     }
 
-    // 2. Busca movimentações do usuário no mês para compor o diagnóstico
+    // 2. Busca movimentações do usuário no mês
     const lastDay = new Date(y, m, 0).getDate();
     const startDate = `${y}-${String(m).padStart(2, '0')}-01T00:00:00.000Z`;
     const endDate = `${y}-${String(m).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}T23:59:59.999Z`;
 
-    const { data: transactions, error } = await supabaseServer
+    const { data: transactions } = await supabaseServer
       .from('transactions')
       .select('amount, type, category, title, date')
       .eq('user_id', user.id)
       .gte('date', startDate)
       .lte('date', endDate);
-
-    if (error) {
-      console.error('Erro ao buscar transações para análise de IA:', error);
-    }
 
     let totalIncome = 0;
     let totalExpense = 0;
@@ -253,11 +318,11 @@ export async function GET(req: NextRequest) {
 
     const balance = totalIncome - totalExpense;
 
-    // 3. Gera diagnóstico base estruturado
+    // 3. Gera diagnóstico estratégico avançado
     const localDiag = generateLocalDiagnosis(totalIncome, totalExpense, balance, expenseByCategory, m, y);
     let adviceText = localDiag.advice;
 
-    // 4. Se houver chave configurada, tenta chamar o Gemini / OpenRouter para parecer avançado
+    // 4. Chamada de IA Generativa de Alto Nível (Gemini / OpenRouter)
     const rawOpenRouterKey = process.env.OPENROUTER_API_KEY || '';
     const rawGeminiKey = process.env.GEMINI_API_KEY || '';
     const openRouterKey = rawOpenRouterKey.trim().replace(/^["']|["']$/g, '');
@@ -266,22 +331,31 @@ export async function GET(req: NextRequest) {
 
     if (apiKey) {
       const prompt = `
-        Atue como um mentor financeiro inteligente e bem-humorado.
-        Você está analisando as contas do usuário em ${month}/${year}.
-        
-        Dados:
-        - Receitas: R$ ${totalIncome.toFixed(2)}
-        - Despesas: R$ ${totalExpense.toFixed(2)}
-        - Saldo final: R$ ${balance.toFixed(2)}
-        - Gastos por Categoria:
+        Você é um Consultor Financeiro e Gestor Patrimonial CFP (Certified Financial Planner) de elite.
+        Você está analisando a performance financeira de um cliente no mês ${month}/${year}.
+
+        DADOS FINANCEIROS CONSOLIDADOS:
+        - Receita Total: R$ ${totalIncome.toFixed(2)}
+        - Despesa Total: R$ ${totalExpense.toFixed(2)}
+        - Saldo Líquido Livre: R$ ${balance.toFixed(2)}
+        - Taxa de Poupança: ${totalIncome > 0 ? ((balance / totalIncome) * 100).toFixed(1) : '0'}%
+        - Composição dos Gastos:
         ${Object.keys(expenseByCategory).length > 0 
-          ? Object.entries(expenseByCategory).map(([cat, val]) => `- ${cat}: R$ ${val.toFixed(2)}`).join('\n')
-          : '- Nenhuma despesa no mês.'}
-        
-        Escreva um parecer direto de 2 a 3 parágrafos curtos com conselhos práticos para otimizar esse orçamento.
+          ? Object.entries(expenseByCategory).map(([cat, val]) => `  * ${cat}: R$ ${val.toFixed(2)}`).join('\n')
+          : '  * Nenhuma despesa registrada no período.'}
+
+        DIRETRIZES CRÍTICAS PARA SUA ANÁLISE:
+        1. NÃO FAÇA RESUMO ARITMÉTICO ÓBVIO (não diga "você faturou X e gastou Y", o cliente já tem esses números na tela).
+        2. ENTENDA A NATUREZA DOS GASTOS:
+           - Educação, Cursos, Livros e Capacitação são INVESTIMENTOS EM CAPITAL HUMANO (maior LTV da vida), nunca sugira cortar ou renegociar isso levianamente.
+           - Saúde e Alimentação Básica são manutenção essencial do bem-estar.
+           - Lazer, Compras e Delivery são estilo de vida discricionário (onde mora a verdadeira margem de otimização).
+        3. FOQUE NO PRÓXIMO PASSO DO CLIENTE:
+           - Se teve sobra positiva alta: Qual o próximo passo tático? (Reserva de Emergência de 6 meses em 100% CDI, diversificação em IPCA+).
+           - Se teve déficit: Onde ajustar de forma indolor e sem terrorismo.
+        4. TOM: Profissional, consultivo, pragmático e inspirador. Máximo 2 a 3 parágrafos curtos.
       `;
 
-      // Se for chave OpenRouter
       if (openRouterKey.startsWith('sk-or-')) {
         try {
           const aiRes = await fetch('https://openrouter.ai/api/v1/chat/completions', {
@@ -304,7 +378,6 @@ export async function GET(req: NextRequest) {
           console.warn('Chamada OpenRouter falhou, usando parecer local:', e);
         }
       } else if (geminiKey) {
-        // Tenta Gemini REST API
         try {
           const aiRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${geminiKey}`, {
             method: 'POST',
@@ -325,7 +398,7 @@ export async function GET(req: NextRequest) {
 
     const nowIso = new Date().toISOString();
 
-    // 5. Salva a análise completa no banco de dados Supabase na tabela ai_analyses
+    // 5. Salva a análise completa no banco de dados Supabase
     const dbPayload = {
       user_id: user.id,
       month: m,
@@ -357,7 +430,7 @@ export async function GET(req: NextRequest) {
   }
 }
 
-// POST /api/ai/advisor (Permite que o frontend salve ou sincronize explicitamente uma análise)
+// POST /api/ai/advisor
 export async function POST(req: NextRequest) {
   const user = verifyAuth(req);
   if (!user) return NextResponse.json({ error: 'Token inválido ou não fornecido' }, { status: 401 });

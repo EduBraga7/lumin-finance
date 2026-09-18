@@ -5,6 +5,8 @@ import Sidebar from './Sidebar';
 import BottomNav from './BottomNav';
 import { useAuth } from '@/context/AuthContext';
 
+import OfflineSyncBanner from './OfflineSyncBanner';
+
 export default function AppLayoutWrapper({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const { loading } = useAuth();
@@ -21,6 +23,7 @@ export default function AppLayoutWrapper({ children }: { children: React.ReactNo
     <div className="app-wrapper">
       <Sidebar />
       <main className="main-content-wrapper">
+        <OfflineSyncBanner />
         {children}
       </main>
       <BottomNav />

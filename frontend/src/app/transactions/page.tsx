@@ -18,12 +18,19 @@ import {
   Zap,
   ArrowRight,
   Check,
-  Sparkles
+  Sparkles,
+  CloudUpload
 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { useDateFilter } from '@/context/DateFilterContext';
 import MonthSelector from '@/components/MonthSelector';
 import { parseQuickAddInput } from '@/utils/quickAddParser';
+import { 
+  addToOfflineQueue, 
+  getOfflineQueue, 
+  cacheTransactionsLocally, 
+  getCachedTransactionsLocally 
+} from '@/utils/offlineQueue';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || '';
 
@@ -40,6 +47,7 @@ interface Transaction {
   category: string;
   date: string;
   is_paid?: boolean;
+  is_offline?: boolean;
 }
 
 function TransactionsContent() {
@@ -99,6 +107,34 @@ function TransactionsContent() {
   const fetchTransactions = useCallback(async () => {
     if (!session?.access_token) return;
 
+    // Helper para extrair itens pendentes da fila offline para o mês/ano atual
+    const getPendingForMonth = () => {
+      const queue = getOfflineQueue();
+      return queue
+        .filter(q => {
+          const parts = q.date.split('-');
+          return parseInt(parts[0], 10) === year && parseInt(parts[1], 10) === month;
+        })
+        .map(q => ({
+          id: q.tempId,
+          title: q.title,
+          amount: q.amount,
+          type: q.type,
+          category: q.category,
+          date: q.date,
+          is_paid: q.is_paid,
+          is_offline: true
+        }));
+    };
+
+    if (typeof navigator !== 'undefined' && !navigator.onLine) {
+      const cached = getCachedTransactionsLocally(month, year);
+      const pending = getPendingForMonth();
+      setTransactions([...pending, ...cached]);
+      setLoading(false);
+      return;
+    }
+
     try {
       const res = await fetch(`${API_URL}/api/transactions?month=${month}&year=${year}&status=paid`, {
         headers: {
@@ -106,16 +142,36 @@ function TransactionsContent() {
         }
       });
       const data = await res.json();
-      setTransactions(Array.isArray(data) ? data : []);
+      if (Array.isArray(data)) {
+        cacheTransactionsLocally(month, year, data);
+        const pending = getPendingForMonth();
+        setTransactions([...pending, ...data]);
+      } else {
+        const cached = getCachedTransactionsLocally(month, year);
+        const pending = getPendingForMonth();
+        setTransactions([...pending, ...cached]);
+      }
     } catch (err) {
-      console.error('Error fetching transactions:', err);
+      console.warn('Conexão instável, carregando do cache local:', err);
+      const cached = getCachedTransactionsLocally(month, year);
+      const pending = getPendingForMonth();
+      setTransactions([...pending, ...cached]);
     } finally {
       setLoading(false);
     }
-  }, [session, month, year]);
+  }, [session?.access_token, month, year]);
 
   useEffect(() => {
     fetchTransactions();
+
+    const handleSynced = () => {
+      fetchTransactions();
+    };
+
+    window.addEventListener('lumin:synced', handleSynced);
+    return () => {
+      window.removeEventListener('lumin:synced', handleSynced);
+    };
   }, [fetchTransactions]);
 
   // Cálculos do resumo mensal
@@ -201,6 +257,34 @@ function TransactionsContent() {
 
     setIsSubmitting(true);
 
+    const txPayload = { 
+      title, 
+      amount: parseFloat(amount), 
+      type, 
+      category, 
+      date,
+      is_paid: true,
+      repeat_months: repeat && !editingId ? 12 : 1 
+    };
+
+    // Modo Offline: se o navegador estiver sem conexão
+    if (typeof navigator !== 'undefined' && !navigator.onLine && !editingId) {
+      const offlineItem = addToOfflineQueue(txPayload);
+      setTransactions(prev => [{
+        id: offlineItem.tempId,
+        title: offlineItem.title,
+        amount: offlineItem.amount,
+        type: offlineItem.type,
+        category: offlineItem.category,
+        date: offlineItem.date,
+        is_paid: true,
+        is_offline: true
+      }, ...prev]);
+      closeModal();
+      setIsSubmitting(false);
+      return;
+    }
+
     try {
       const url = editingId ? `${API_URL}/api/transactions/${editingId}` : `${API_URL}/api/transactions`;
       const method = editingId ? 'PUT' : 'POST';
@@ -211,15 +295,7 @@ function TransactionsContent() {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${session?.access_token}`
         },
-        body: JSON.stringify({ 
-          title, 
-          amount: parseFloat(amount), 
-          type, 
-          category, 
-          date,
-          is_paid: true,
-          repeat_months: repeat && !editingId ? 12 : 1 
-        })
+        body: JSON.stringify(txPayload)
       });
 
       if (res.ok) {
@@ -236,7 +312,23 @@ function TransactionsContent() {
         alert(`Erro da API: ${errData.error || 'Falha ao salvar'}`);
       }
     } catch (err: any) {
-      alert(`Erro na requisição: ${err.message || err}`);
+      // Se a conexão falhou durante o envio
+      if (!editingId) {
+        const offlineItem = addToOfflineQueue(txPayload);
+        setTransactions(prev => [{
+          id: offlineItem.tempId,
+          title: offlineItem.title,
+          amount: offlineItem.amount,
+          type: offlineItem.type,
+          category: offlineItem.category,
+          date: offlineItem.date,
+          is_paid: true,
+          is_offline: true
+        }, ...prev]);
+        closeModal();
+      } else {
+        alert(`Erro na requisição: ${err.message || err}`);
+      }
     } finally {
       setIsSubmitting(false);
     }
@@ -309,6 +401,26 @@ function TransactionsContent() {
     const pYear = parseInt(dateParts[0], 10);
     const pMonth = parseInt(dateParts[1], 10);
 
+    // Se estiver explicitamente offline
+    if (typeof navigator !== 'undefined' && !navigator.onLine) {
+      const offlineItem = addToOfflineQueue(txPayload);
+      setTransactions(prev => [{
+        id: offlineItem.tempId,
+        title: offlineItem.title,
+        amount: offlineItem.amount,
+        type: offlineItem.type,
+        category: offlineItem.category,
+        date: offlineItem.date,
+        is_paid: true,
+        is_offline: true
+      }, ...prev]);
+      setQuickAddText('');
+      setQuickAddFeedback(`📱 Salvo no aparelho: "${parsedQuickAdd.title}" (Offline)`);
+      setTimeout(() => setQuickAddFeedback(null), 4000);
+      setIsSubmittingQuickAdd(false);
+      return;
+    }
+
     try {
       const res = await fetch(`${API_URL}/api/transactions`, {
         method: 'POST',
@@ -340,7 +452,21 @@ function TransactionsContent() {
         alert(`Erro ao salvar lançamento rápido: ${err.error || 'Falha na requisição'}`);
       }
     } catch (err: any) {
-      alert(`Erro de conexão: ${err.message || err}`);
+      // Falha de conexão: guarda na fila offline
+      const offlineItem = addToOfflineQueue(txPayload);
+      setTransactions(prev => [{
+        id: offlineItem.tempId,
+        title: offlineItem.title,
+        amount: offlineItem.amount,
+        type: offlineItem.type,
+        category: offlineItem.category,
+        date: offlineItem.date,
+        is_paid: true,
+        is_offline: true
+      }, ...prev]);
+      setQuickAddText('');
+      setQuickAddFeedback(`📱 Salvo no aparelho: "${parsedQuickAdd.title}" (Offline)`);
+      setTimeout(() => setQuickAddFeedback(null), 4000);
     } finally {
       setIsSubmittingQuickAdd(false);
     }
@@ -695,6 +821,23 @@ function TransactionsContent() {
                     <Calendar size={13} style={{ opacity: 0.7 }} />
                     {formatDateDisplay(t.date)}
                   </span>
+                  {t.is_offline && (
+                    <span style={{
+                      fontSize: '0.72rem',
+                      background: 'rgba(234, 179, 8, 0.15)',
+                      color: '#facc15',
+                      border: '1px solid rgba(234, 179, 8, 0.4)',
+                      padding: '0.15rem 0.45rem',
+                      borderRadius: '4px',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '0.25rem',
+                      fontWeight: 600
+                    }} title="Salvo localmente no aparelho. Será enviado à nuvem assim que você se conectar.">
+                      <CloudUpload size={12} />
+                      Offline
+                    </span>
+                  )}
                 </div>
                 
                 <div className="tx-actions-container">

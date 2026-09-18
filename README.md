@@ -4,7 +4,7 @@
   <a href="https://lumin-finance-taupe.vercel.app">
     <img src="https://img.shields.io/badge/Demo_Online-Vercel-black?style=for-the-badge&logo=vercel&logoColor=white" alt="Demo Online" />
   </a>
-  <img src="https://img.shields.io/badge/Versão-0.2.1-blue?style=for-the-badge" alt="Versão 0.2.1" />
+  <img src="https://img.shields.io/badge/Versão-0.3.0-blue?style=for-the-badge" alt="Versão 0.3.0" />
   <img src="https://img.shields.io/badge/Next.js_16-000000?style=for-the-badge&logo=next.js&logoColor=white" alt="Next.js" />
   <img src="https://img.shields.io/badge/React_19-61DAFB?style=for-the-badge&logo=react&logoColor=black" alt="React" />
   <img src="https://img.shields.io/badge/TypeScript_5-3178C6?style=for-the-badge&logo=typescript&logoColor=white" alt="TypeScript" />
@@ -12,7 +12,9 @@
   <img src="https://img.shields.io/badge/Supabase-3ECF8E?style=for-the-badge&logo=supabase&logoColor=white" alt="Supabase" />
   <img src="https://img.shields.io/badge/Google_Gemini-4285F4?style=for-the-badge&logo=google&logoColor=white" alt="Google Gemini" />
   <img src="https://img.shields.io/badge/PWA-Ready-5A0FC8?style=for-the-badge&logo=pwa&logoColor=white" alt="PWA Ready" />
-  <img src="https://img.shields.io/badge/Testes-20%20Passando-brightgreen?style=for-the-badge&logo=vitest&logoColor=white" alt="Testes Unitários" />
+  <img src="https://img.shields.io/badge/Testes_Unitários-20%20Passando-brightgreen?style=for-the-badge&logo=vitest&logoColor=white" alt="Testes Unitários" />
+  <img src="https://img.shields.io/badge/Testes_E2E-Playwright-8A2BE2?style=for-the-badge&logo=playwright&logoColor=white" alt="Testes E2E" />
+  <img src="https://img.shields.io/badge/Security-Rate_Limiting_%26_CSRF-red?style=for-the-badge&logo=security&logoColor=white" alt="Security" />
 </p>
 
 O **Lumin Finance** é uma plataforma full-stack moderna e completa de gestão orçamentária pessoal e executiva. Desenvolvido para oferecer controle financeiro com previsibilidade e clareza, o sistema integra **Inteligência Artificial Generativa (Google Gemini)** para diagnósticos em tempo real, relatórios anuais executivos com detalhamento de categorias, lançamento rápido com linguagem natural, suporte offline e arquitetura resiliente a fusos horários.
@@ -64,6 +66,25 @@ O **Lumin Finance** é uma plataforma full-stack moderna e completa de gestão o
 - **Dataset Realista Completo:** Carrega automaticamente transações executivas, métricas de saldo, categorização inteligente, fluxo de caixa e diagnóstico analítico da IA sem tocar no banco de dados.
 - **Banner Persistente com Botão de Saída:** Faixa indicativa clara de modo demonstração no topo da aplicação com ação instantânea para encerrar e voltar ao login.
 
+### 8. 🎨 Modo Light/Dark Theme Toggle
+- **Detecção Automática:** Detecta preferência do sistema (dark/light) e aplica automaticamente.
+- **Toggle Manual:** Botão na sidebar para alternar entre temas manualmente.
+- **Persistência:** Preferência salva em localStorage para consistência entre sessões.
+- **Design Adaptativo:** Todos os componentes adaptados para ambos os temas com cores variáveis CSS.
+
+### 9. 🚀 Performance com Lazy Loading
+- **Componentes Dinâmicos:** Carregamento sob demanda de componentes pesados (gráficos, modais, tabelas).
+- **Loading States:** Indicadores visuais durante o carregamento de componentes.
+- **Redução de Bundle:** Diminuição significativa do JavaScript inicial carregado.
+
+### 10. 🔒 Segurança Avançada
+- **Rate Limiting:** Limitação de requisições por IP/usuário para prevenir ataques:
+  - GET: 200 requisições/minuto
+  - POST: 50 requisições/minuto
+  - Login: 5 tentativas/minuto (proteção contra brute force)
+- **CSRF Protection:** Tokens CSRF gerados automaticamente e validados em requisições state-changing.
+- **Headers Informativos:** Respostas incluem headers X-RateLimit-* para transparência de limites.
+
 ---
 
 ## 🔐 Segurança
@@ -79,6 +100,15 @@ O Lumin Finance adota um modelo de autenticação focado em segurança máxima:
 ```sql
 REVOKE ALL ON public.transactions, public.ai_analyses, public.custom_users FROM anon;
 ```
+
+- **Rate Limiting:** Sistema de limitação de requisições por IP/usuário:
+  - Prevenção contra ataques de força bruta em login (5 tentativas/minuto)
+  - Proteção contra abuso de API (200 GET/min, 50 POST/min)
+  - Headers informativos (X-RateLimit-Limit, X-RateLimit-Remaining, X-RateLimit-Reset)
+- **CSRF Protection:** Tokens CSRF gerados automaticamente e validados em requisições state-changing (POST, PUT, DELETE, PATCH):
+  - Tokens armazenados em cookies HttpOnly
+  - Validação server-side em todas as operações de escrita
+  - API client automatiza inclusão de tokens CSRF
 
 ---
 
@@ -102,7 +132,11 @@ O projeto adota uma arquitetura full-stack monolítica moderna baseada no **Next
 - **Banco de Dados & Auth:** Supabase (PostgreSQL) com JWT e Bcryptjs
 - **Inteligência Artificial:** Google Gemini (`gemini-1.5-flash`, `gemini-2.0-flash`) & OpenRouter API
 - **Offline & Mobile:** Progressive Web App (PWA), Service Worker e Fila Local com Sincronização Automática
-- **Testes:** Vitest com 20 testes unitários (parsers, formatadores, diagnóstico de IA)
+- **Testes Unitários:** Vitest com 20 testes unitários (parsers, formatadores, diagnóstico de IA)
+- **Testes E2E:** Playwright com suítes completas para auth, dashboard, transactions e reports
+- **Testes de Componentes:** React Testing Library com jsdom para testes de UI
+- **Segurança:** Rate limiting in-memory, CSRF protection, tokens HttpOnly
+- **Performance:** Lazy loading de componentes com Next.js dynamic imports
 - **Qualidade de Código:** ESLint sem warnings, TypeScript estrito
 - **Hospedagem & CI/CD:** Vercel
 
@@ -212,6 +246,15 @@ npm install
 # Executar a suíte de testes unitários (Vitest — 20 testes)
 npm test
 
+# Executar testes E2E (Playwright)
+npm run test:e2e
+
+# Executar testes E2E com interface visual
+npm run test:e2e:ui
+
+# Executar testes E2E em modo debug
+npm run test:e2e:debug
+
 # Verificar tipos TypeScript
 npx tsc --noEmit
 
@@ -247,6 +290,11 @@ O projeto está 100% configurado para deploy automático na Vercel:
 ```text
 lumin-finance/
 ├── public/                        # Ícones PWA, manifest.json e Service Worker
+├── e2e/                           # Testes E2E (Playwright)
+│   ├── auth.spec.ts               # Testes de autenticação
+│   ├── dashboard.spec.ts          # Testes do dashboard
+│   ├── transactions.spec.ts       # Testes de transações
+│   └── reports.spec.ts            # Testes de relatórios
 ├── src/
 │   ├── proxy.ts                   # Guard de autenticação server-side (Next.js 16)
 │   ├── app/
@@ -260,31 +308,41 @@ lumin-finance/
 │   │   ├── layout.tsx             # Root layout com PWA e Providers
 │   │   └── page.tsx               # Dashboard Executivo e Lumin AI Advisor
 │   ├── components/                # Componentes modulares de UI
+│   │   ├── __tests__/             # Testes de componentes (React Testing Library)
 │   │   ├── dashboard/             # AiAdvisorCard, CategoryExpenseChart, DrilldownModal
 │   │   ├── reports/               # AnnualKpiCards, AnnualCashFlowChart, AnnualSummaryTable
 │   │   ├── transactions/          # QuickAddBar, TransactionFilters, Table, Modal, SummaryCards
 │   │   ├── AppLayoutWrapper.tsx
 │   │   ├── BottomNav.tsx
+│   │   ├── DemoBanner.tsx         # Banner indicativo de modo demonstração
 │   │   ├── MonthSelector.tsx
 │   │   ├── OfflineSyncBanner.tsx
 │   │   ├── RegisterSW.tsx
-│   │   └── Sidebar.tsx
+│   │   ├── Sidebar.tsx
+│   │   └── ThemeToggle.tsx        # Toggle de tema light/dark
 │   ├── constants/                 # Cores de categorias, emojis e meses (Single Source of Truth)
-│   ├── context/                   # AuthContext e DateFilterContext
+│   ├── context/                   # AuthContext, DateFilterContext e ThemeContext
 │   ├── hooks/                     # useTransactions e useDashboard (Clean Code Hooks)
-│   ├── lib/                       # serverAuth.ts (validação de JWT e Supabase Server)
+│   ├── lib/                       # Utilitários server-side
+│   │   ├── csrf.ts                # Proteção CSRF (geração e validação de tokens)
+│   │   ├── rateLimiter.ts         # Rate limiting in-memory
+│   │   └── serverAuth.ts          # Validação de JWT e Supabase Server
 │   ├── types/                     # Tipos TypeScript centralizados (finance.ts)
 │   └── utils/
 │       ├── __tests__/             # Testes unitários (Vitest) — 20 testes
 │       ├── aiAdvisor.ts           # Diagnóstico financeiro determinístico
+│       ├── apiClient.ts            # Cliente API com suporte CSRF
 │       ├── csvExport.ts
+│       ├── demoData.ts            # Dados mockados para modo demonstração
 │       ├── formatters.ts
 │       ├── offlineQueue.ts        # Fila offline com sync via cookie (sem token exposto)
 │       └── quickAddParser.ts      # Parser de linguagem natural
 ├── .env.example                   # Modelo de variáveis de ambiente
 ├── next.config.ts                 # Configurações do Next.js
 ├── package.json                   # Dependências e scripts do projeto
+├── playwright.config.ts           # Configuração do Playwright (testes E2E)
 ├── tsconfig.json                  # Configuração TypeScript
+├── vitest.config.ts               # Configuração do Vitest (testes unitários)
 └── README.md
 ```
 

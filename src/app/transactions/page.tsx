@@ -10,12 +10,15 @@ import { Transaction, TransactionPayload, TransactionType } from '@/types/financ
 import { ParsedQuickAdd } from '@/utils/quickAddParser';
 import { exportTransactionsToCsv } from '@/utils/csvExport';
 import { useTransactions } from '@/hooks/useTransactions';
+import dynamic from 'next/dynamic';
 
-import TransactionSummaryCards from '@/components/transactions/TransactionSummaryCards';
-import QuickAddBar from '@/components/transactions/QuickAddBar';
-import TransactionFilters from '@/components/transactions/TransactionFilters';
-import TransactionTable from '@/components/transactions/TransactionTable';
-import TransactionModal from '@/components/transactions/TransactionModal';
+const TransactionSummaryCards = dynamic(() => import('@/components/transactions/TransactionSummaryCards'));
+const QuickAddBar = dynamic(() => import('@/components/transactions/QuickAddBar'));
+const TransactionFilters = dynamic(() => import('@/components/transactions/TransactionFilters'));
+const TransactionTable = dynamic(() => import('@/components/transactions/TransactionTable'), {
+  loading: () => <div className="glass-card" style={{ padding: '2rem', textAlign: 'center' }}>Carregando transações...</div>
+});
+const TransactionModal = dynamic(() => import('@/components/transactions/TransactionModal'));
 
 function TransactionsContent() {
   const searchParams = useSearchParams();

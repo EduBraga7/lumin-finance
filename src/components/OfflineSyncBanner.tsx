@@ -11,7 +11,7 @@ export default function OfflineSyncBanner() {
   const [isSyncing, setIsSyncing] = useState(false);
   const [lastSyncSuccessMsg, setLastSyncSuccessMsg] = useState<string | null>(null);
 
-  const { session } = useAuth();
+  const { user } = useAuth();
 
   const updateQueueState = useCallback(() => {
     const q = getOfflineQueue();
@@ -19,13 +19,13 @@ export default function OfflineSyncBanner() {
   }, []);
 
   const triggerSync = useCallback(async () => {
-    if (!session?.access_token || isSyncing) return;
+    if (!user || isSyncing) return;
     const currentQueue = getOfflineQueue();
     if (currentQueue.length === 0) return;
 
     setIsSyncing(true);
     try {
-      const result = await syncOfflineQueue(session.access_token);
+      const result = await syncOfflineQueue();
       if (result.success > 0) {
         setLastSyncSuccessMsg(`${result.success} lançamento(s) offline sincronizado(s) com sucesso!`);
         setTimeout(() => setLastSyncSuccessMsg(null), 4500);
@@ -36,15 +36,23 @@ export default function OfflineSyncBanner() {
       setIsSyncing(false);
       updateQueueState();
     }
-  }, [session?.access_token, isSyncing, updateQueueState]);
+  }, [user, isSyncing, updateQueueState]);
+
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
 
-    if (!navigator.onLine) {
-      setTimeout(() => setIsOnline(false), 0);
-    }
-    updateQueueState();
+    const runInit = async () => {
+      await Promise.resolve();
+      if (!navigator.onLine) {
+        setIsOnline(false);
+      }
+      updateQueueState();
+      if (navigator.onLine && getOfflineQueue().length > 0) {
+        triggerSync();
+      }
+    };
+    runInit();
 
     const handleOnline = () => {
       setIsOnline(true);
@@ -63,11 +71,6 @@ export default function OfflineSyncBanner() {
     window.addEventListener('online', handleOnline);
     window.addEventListener('offline', handleOffline);
     window.addEventListener('lumin:queue_updated', handleQueueUpdated);
-
-    // Se já estiver online e houver pendências, sincroniza
-    if (navigator.onLine && getOfflineQueue().length > 0) {
-      triggerSync();
-    }
 
     return () => {
       window.removeEventListener('online', handleOnline);

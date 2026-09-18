@@ -3,6 +3,7 @@ import "./globals.css";
 
 import { AuthProvider } from "@/context/AuthContext";
 import { DateFilterProvider } from '@/context/DateFilterContext';
+import { ThemeProvider } from '@/context/ThemeContext';
 import AppLayoutWrapper from "@/components/AppLayoutWrapper";
 import RegisterSW from "@/components/RegisterSW";
 
@@ -40,11 +41,13 @@ export default function RootLayout({
     <html lang="pt-BR">
       <body>
         <RegisterSW />
-        <AuthProvider>
-          <DateFilterProvider>
-            <AppLayoutWrapper>{children}</AppLayoutWrapper>
-          </DateFilterProvider>
-        </AuthProvider>
+        <ThemeProvider>
+          <AuthProvider>
+            <DateFilterProvider>
+              <AppLayoutWrapper>{children}</AppLayoutWrapper>
+            </DateFilterProvider>
+          </AuthProvider>
+        </ThemeProvider>
       </body>
     </html>
   );

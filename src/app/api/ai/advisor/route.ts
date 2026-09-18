@@ -3,8 +3,22 @@ import { supabaseServer, verifyAuth } from '@/lib/serverAuth';
 import { generateAiDiagnosisFromData } from '@/utils/aiAdvisor';
 
 
+interface AnalysisPayload {
+  user_id: string;
+  month: number;
+  year: number;
+  month_key?: string;
+  summary?: string;
+  status?: string;
+  status_text?: string;
+  insights?: unknown;
+  advice?: string;
+  updated_at?: string;
+  [key: string]: unknown;
+}
+
 // Helper para salvar com fallback de compatibilidade de colunas
-async function saveAnalysisToDatabase(payload: any) {
+async function saveAnalysisToDatabase(payload: AnalysisPayload) {
   let { data, error } = await supabaseServer
     .from('ai_analyses')
     .upsert(payload, { onConflict: 'user_id,month,year' })
@@ -78,7 +92,7 @@ export async function GET(req: NextRequest) {
     // 1. Se não for refresh forçado, verifica se já existe análise no banco para este mês
     if (!refresh) {
       try {
-        let cached: any = null;
+        let cached: AnalysisPayload | null = null;
 
         const { data: byMonthYear } = await supabaseServer
           .from('ai_analyses')
@@ -89,7 +103,7 @@ export async function GET(req: NextRequest) {
           .maybeSingle();
 
         if (byMonthYear) {
-          cached = byMonthYear;
+          cached = byMonthYear as AnalysisPayload;
         } else {
           const { data: byMonthKey } = await supabaseServer
             .from('ai_analyses')
@@ -97,7 +111,7 @@ export async function GET(req: NextRequest) {
             .eq('user_id', user.id)
             .eq('month_key', monthKey)
             .maybeSingle();
-          if (byMonthKey) cached = byMonthKey;
+          if (byMonthKey) cached = byMonthKey as AnalysisPayload;
         }
 
         if (cached && (cached.summary || cached.advice)) {
@@ -105,7 +119,7 @@ export async function GET(req: NextRequest) {
             summary: cached.summary || cached.advice,
             status: cached.status || 'good',
             statusText: cached.status_text || 'Orçamento Equilibrado',
-            insights: Array.isArray(cached.insights) ? cached.insights : (cached.alerts || []),
+            insights: Array.isArray(cached.insights) ? cached.insights : ((cached.alerts as unknown[]) || []),
             advice: cached.advice || cached.summary,
             cached: true,
             updated_at: cached.updated_at || cached.created_at
@@ -132,8 +146,14 @@ export async function GET(req: NextRequest) {
     let totalExpense = 0;
     const expenseByCategory: Record<string, number> = {};
 
-    (transactions || []).forEach((t: any) => {
-      const amount = parseFloat(t.amount || 0);
+    interface TxSummaryRow {
+      amount: number | string;
+      type: string;
+      category?: string;
+    }
+
+    ((transactions || []) as TxSummaryRow[]).forEach((t) => {
+      const amount = parseFloat(String(t.amount || 0));
       if (t.type === 'income') {
         totalIncome += amount;
       } else {
@@ -254,9 +274,10 @@ export async function GET(req: NextRequest) {
       updated_at: nowIso
     });
 
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Erro geral no endpoint de IA:', error);
-    return NextResponse.json({ error: 'Erro ao gerar diagnóstico: ' + (error?.message || error) }, { status: 500 });
+    const message = error instanceof Error ? error.message : String(error);
+    return NextResponse.json({ error: 'Erro ao gerar diagnóstico: ' + message }, { status: 500 });
   }
 }
 
@@ -298,7 +319,8 @@ export async function POST(req: NextRequest) {
     }
 
     return NextResponse.json({ success: true, saved: data?.[0] || dbPayload });
-  } catch (err: any) {
-    return NextResponse.json({ error: err?.message || 'Erro interno ao salvar análise' }, { status: 500 });
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : 'Erro interno ao salvar análise';
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }

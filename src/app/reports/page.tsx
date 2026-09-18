@@ -4,9 +4,18 @@ import { useEffect, useState, useCallback, useMemo } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { ChevronLeft, ChevronRight, BarChart3 } from 'lucide-react';
 import { YearlyMonthData, AnnualSummary, MonthHighlight, ExpenseHighlight } from '@/types/finance';
-import { AnnualKpiCards } from '@/components/reports/AnnualKpiCards';
-import { AnnualCashFlowChart } from '@/components/reports/AnnualCashFlowChart';
-import { AnnualSummaryTable } from '@/components/reports/AnnualSummaryTable';
+import dynamic from 'next/dynamic';
+import { DEMO_YEARLY_DATA } from '@/utils/demoData';
+
+const AnnualKpiCards = dynamic(() => import('@/components/reports/AnnualKpiCards'), {
+  loading: () => <div className="glass-card" style={{ padding: '2rem', textAlign: 'center' }}>Carregando KPIs...</div>
+});
+const AnnualCashFlowChart = dynamic(() => import('@/components/reports/AnnualCashFlowChart'), {
+  loading: () => <div className="glass-card" style={{ padding: '2rem', textAlign: 'center' }}>Carregando gráficos...</div>
+});
+const AnnualSummaryTable = dynamic(() => import('@/components/reports/AnnualSummaryTable'), {
+  loading: () => <div className="glass-card" style={{ padding: '2rem', textAlign: 'center' }}>Carregando tabela...</div>
+});
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || '';
 const MIN_YEAR = 2026;
@@ -16,17 +25,26 @@ export default function ReportsPage() {
   const [loading, setLoading] = useState(true);
   const [year, setYear] = useState(new Date().getFullYear());
   
-  const { session } = useAuth();
+  const { user, isDemoMode } = useAuth();
 
   const fetchYearlyData = useCallback(async () => {
-    if (!session?.access_token) return;
+    if (!user) return;
+
+    if (isDemoMode) {
+      if (year === 2026) {
+        setData(DEMO_YEARLY_DATA);
+      } else {
+        setData([]);
+      }
+      setLoading(false);
+      return;
+    }
+
     setLoading(true);
 
     try {
       const res = await fetch(`${API_URL}/api/transactions/yearly?year=${year}`, {
-        headers: {
-          'Authorization': `Bearer ${session.access_token}`
-        }
+        credentials: 'include',
       });
       const json = await res.json();
       setData(Array.isArray(json) ? json : []);
@@ -36,10 +54,20 @@ export default function ReportsPage() {
     } finally {
       setLoading(false);
     }
-  }, [session, year]);
+  }, [user, isDemoMode, year]);
 
   useEffect(() => {
-    fetchYearlyData();
+    let ignore = false;
+    const run = async () => {
+      await Promise.resolve();
+      if (!ignore) {
+        fetchYearlyData();
+      }
+    };
+    run();
+    return () => {
+      ignore = true;
+    };
   }, [fetchYearlyData]);
 
   // Cálculos consolidados do ano

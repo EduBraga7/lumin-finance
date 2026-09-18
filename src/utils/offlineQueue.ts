@@ -82,7 +82,6 @@ export function getCachedTransactionsLocally<T = unknown>(month: number, year: n
 const API_URL = process.env.NEXT_PUBLIC_API_URL || '';
 
 export async function syncOfflineQueue(
-  token: string,
   onProgress?: (remaining: number, total: number) => void
 ): Promise<{ success: number; failed: number }> {
   const queue = getOfflineQueue();
@@ -106,10 +105,8 @@ export async function syncOfflineQueue(
 
       const res = await fetch(`${API_URL}/api/transactions`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify(payload)
       });
 

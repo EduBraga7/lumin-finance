@@ -57,7 +57,8 @@ export async function POST(req: NextRequest) {
     });
 
     return response;
-  } catch (err: any) {
-    return NextResponse.json({ error: 'Erro no servidor: ' + (err.message || err) }, { status: 500 });
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : String(err);
+    return NextResponse.json({ error: 'Erro no servidor: ' + message }, { status: 500 });
   }
 }

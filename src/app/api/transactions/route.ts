@@ -1,7 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseServer, verifyAuth } from '@/lib/serverAuth';
+import { rateLimit, getRateLimitIdentifier } from '@/lib/rateLimiter';
+import { csrfProtection } from '@/lib/csrf';
 
-const applyDateFilter = (query: any, month: string | null, year: string | null) => {
+interface DateFilterable {
+  gte(column: string, value: string): this;
+  lte(column: string, value: string): this;
+}
+
+const applyDateFilter = <T extends DateFilterable>(query: T, month: string | null, year: string | null): T => {
   if (month && year) {
     const m = parseInt(month, 10);
     const y = parseInt(year, 10);
@@ -17,6 +24,24 @@ const applyDateFilter = (query: any, month: string | null, year: string | null) 
 export async function GET(req: NextRequest) {
   const user = verifyAuth(req);
   if (!user) return NextResponse.json({ error: 'Token inválido ou não fornecido' }, { status: 401 });
+
+  // Rate limiting
+  const identifier = getRateLimitIdentifier(req);
+  const rateLimitResult = rateLimit(identifier, 200, 60000); // 200 requests per minute
+  
+  if (!rateLimitResult.success) {
+    return NextResponse.json(
+      { error: 'Muitas requisições. Tente novamente em alguns instantes.' },
+      { 
+        status: 429,
+        headers: {
+          'X-RateLimit-Limit': '200',
+          'X-RateLimit-Remaining': '0',
+          'X-RateLimit-Reset': new Date(rateLimitResult.resetTime).toISOString(),
+        }
+      }
+    );
+  }
 
   const { searchParams } = new URL(req.url);
   const month = searchParams.get('month');
@@ -40,13 +65,43 @@ export async function GET(req: NextRequest) {
 
   const { data, error } = await query;
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-  return NextResponse.json(data);
+  
+  return NextResponse.json(data, {
+    headers: {
+      'X-RateLimit-Limit': '200',
+      'X-RateLimit-Remaining': rateLimitResult.remaining.toString(),
+      'X-RateLimit-Reset': new Date(rateLimitResult.resetTime).toISOString(),
+    }
+  });
 }
 
 // POST /api/transactions
 export async function POST(req: NextRequest) {
   const user = verifyAuth(req);
   if (!user) return NextResponse.json({ error: 'Token inválido ou não fornecido' }, { status: 401 });
+
+  // CSRF protection
+  if (!csrfProtection(req)) {
+    return NextResponse.json({ error: 'Token CSRF inválido ou não fornecido' }, { status: 403 });
+  }
+
+  // Rate limiting (stricter for POST requests)
+  const identifier = getRateLimitIdentifier(req);
+  const rateLimitResult = rateLimit(identifier, 50, 60000); // 50 requests per minute for POST
+  
+  if (!rateLimitResult.success) {
+    return NextResponse.json(
+      { error: 'Muitas requisições. Tente novamente em alguns instantes.' },
+      { 
+        status: 429,
+        headers: {
+          'X-RateLimit-Limit': '50',
+          'X-RateLimit-Remaining': '0',
+          'X-RateLimit-Reset': new Date(rateLimitResult.resetTime).toISOString(),
+        }
+      }
+    );
+  }
 
   try {
     const { title, amount, type, category, date, repeat_months, is_paid } = await req.json();
@@ -100,7 +155,8 @@ export async function POST(req: NextRequest) {
 
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
     return NextResponse.json(data[0], { status: 201 });
-  } catch (err: any) {
-    return NextResponse.json({ error: err.message || 'Erro ao processar requisição' }, { status: 500 });
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : 'Erro ao processar requisição';
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }

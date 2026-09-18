@@ -2,34 +2,14 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { useEffect, useState } from 'react';
 import { LayoutDashboard, Receipt, LogOut, BarChart2, Sun, Moon } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
+import { useTheme } from '@/context/ThemeContext';
 
 export default function Sidebar() {
   const pathname = usePathname();
   const { user, signOut } = useAuth();
-  const [theme, setTheme] = useState<'dark' | 'light'>('dark');
-
-  useEffect(() => {
-    const saved = localStorage.getItem('lumin_theme');
-    if (saved === 'light') {
-      document.body.classList.add('light-mode');
-      setTimeout(() => setTheme('light'), 0);
-    }
-  }, []);
-
-  const toggleTheme = () => {
-    if (theme === 'dark') {
-      setTheme('light');
-      document.body.classList.add('light-mode');
-      localStorage.setItem('lumin_theme', 'light');
-    } else {
-      setTheme('dark');
-      document.body.classList.remove('light-mode');
-      localStorage.setItem('lumin_theme', 'dark');
-    }
-  };
+  const { theme, toggleTheme } = useTheme();
 
   return (
     <aside className="sidebar">

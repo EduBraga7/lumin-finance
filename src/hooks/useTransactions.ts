@@ -9,11 +9,12 @@ import {
   cacheTransactionsLocally,
   getCachedTransactionsLocally,
 } from '@/utils/offlineQueue';
+import { DEMO_TRANSACTIONS } from '@/utils/demoData';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || '';
 
 export function useTransactions(month: number, year: number) {
-  const { session } = useAuth();
+  const { user, isDemoMode } = useAuth();
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -38,7 +39,18 @@ export function useTransactions(month: number, year: number) {
   }, [month, year]);
 
   const fetchTransactions = useCallback(async () => {
-    if (!session?.access_token) return;
+    if (!user) return;
+
+    // Modo demo: retorna dados mockados filtrados pelo mês/ano
+    if (isDemoMode) {
+      const filtered = DEMO_TRANSACTIONS.filter((t) => {
+        const d = new Date(t.date);
+        return d.getUTCMonth() + 1 === month && d.getUTCFullYear() === year;
+      });
+      setTransactions(filtered);
+      setLoading(false);
+      return;
+    }
 
     if (typeof navigator !== 'undefined' && !navigator.onLine) {
       const cached = getCachedTransactionsLocally<Transaction>(month, year);
@@ -52,11 +64,7 @@ export function useTransactions(month: number, year: number) {
       setLoading(true);
       const res = await fetch(
         `${API_URL}/api/transactions?month=${month}&year=${year}&status=paid`,
-        {
-          headers: {
-            Authorization: `Bearer ${session.access_token}`,
-          },
-        }
+        { credentials: 'include' }
       );
 
       if (res.ok) {
@@ -76,10 +84,17 @@ export function useTransactions(month: number, year: number) {
     } finally {
       setLoading(false);
     }
-  }, [session, month, year, getPendingForMonth]);
+  }, [user, isDemoMode, month, year, getPendingForMonth]);
 
   useEffect(() => {
-    fetchTransactions();
+    let ignore = false;
+    const run = async () => {
+      await Promise.resolve();
+      if (!ignore) {
+        fetchTransactions();
+      }
+    };
+    run();
 
     const handleSynced = () => {
       fetchTransactions();
@@ -87,12 +102,19 @@ export function useTransactions(month: number, year: number) {
 
     window.addEventListener('lumin:synced', handleSynced);
     return () => {
+      ignore = true;
       window.removeEventListener('lumin:synced', handleSynced);
     };
   }, [fetchTransactions]);
 
   const createTransaction = useCallback(
     async (payload: TransactionPayload): Promise<{ success: boolean; isOffline?: boolean; error?: string }> => {
+      // Modo demo: simula sucesso sem salvar nada
+      if (isDemoMode) {
+        alert('Modo Demo — alterações não são salvas.');
+        return { success: false, error: 'Modo demo' };
+      }
+
       // Se estiver explicitamente offline no navegador
       if (typeof navigator !== 'undefined' && !navigator.onLine) {
         const offlineItem = addToOfflineQueue(payload);
@@ -115,10 +137,8 @@ export function useTransactions(month: number, year: number) {
       try {
         const res = await fetch(`${API_URL}/api/transactions`, {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${session?.access_token}`,
-          },
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
           body: JSON.stringify(payload),
         });
 
@@ -149,18 +169,17 @@ export function useTransactions(month: number, year: number) {
         return { success: true, isOffline: true, error: msg };
       }
     },
-    [session, fetchTransactions]
+    [isDemoMode, fetchTransactions]
   );
 
   const updateTransaction = useCallback(
     async (id: string, payload: Partial<TransactionPayload>): Promise<boolean> => {
+      if (isDemoMode) { alert('Modo Demo — alterações não são salvas.'); return false; }
       try {
         const res = await fetch(`${API_URL}/api/transactions/${id}`, {
           method: 'PUT',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${session?.access_token}`,
-          },
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
           body: JSON.stringify(payload),
         });
 
@@ -173,17 +192,16 @@ export function useTransactions(month: number, year: number) {
         return false;
       }
     },
-    [session, fetchTransactions]
+    [isDemoMode, fetchTransactions]
   );
 
   const deleteTransaction = useCallback(
     async (id: string): Promise<boolean> => {
+      if (isDemoMode) { alert('Modo Demo — alterações não são salvas.'); return false; }
       try {
         const res = await fetch(`${API_URL}/api/transactions/${id}`, {
           method: 'DELETE',
-          headers: {
-            Authorization: `Bearer ${session?.access_token}`,
-          },
+          credentials: 'include',
         });
 
         if (res.ok) {
@@ -195,7 +213,7 @@ export function useTransactions(month: number, year: number) {
         return false;
       }
     },
-    [session]
+    [isDemoMode]
   );
 
   // Cálculos consolidados do mês

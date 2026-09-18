@@ -1,16 +1,23 @@
 "use client";
 
-import { useState } from 'react';
+import { useState, Suspense } from 'react';
 import { useRouter } from 'next/navigation';
 import { useDateFilter } from '@/context/DateFilterContext';
 import MonthSelector from '@/components/MonthSelector';
 import { MONTH_NAMES } from '@/constants/dates';
 import { formatCurrency } from '@/utils/formatters';
 import { useDashboard } from '@/hooks/useDashboard';
+import dynamic from 'next/dynamic';
 
-import AiAdvisorCard from '@/components/dashboard/AiAdvisorCard';
-import CategoryExpenseChart from '@/components/dashboard/CategoryExpenseChart';
-import CategoryDrilldownModal from '@/components/dashboard/CategoryDrilldownModal';
+const AiAdvisorCard = dynamic(() => import('@/components/dashboard/AiAdvisorCard'), {
+  loading: () => <div className="glass-card" style={{ padding: '2rem', textAlign: 'center' }}>Carregando IA Advisor...</div>
+});
+
+const CategoryExpenseChart = dynamic(() => import('@/components/dashboard/CategoryExpenseChart'), {
+  loading: () => <div className="glass-card" style={{ padding: '2rem', textAlign: 'center' }}>Carregando gráficos...</div>
+});
+
+const CategoryDrilldownModal = dynamic(() => import('@/components/dashboard/CategoryDrilldownModal'));
 
 export default function Home() {
   const router = useRouter();

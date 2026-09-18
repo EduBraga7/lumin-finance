@@ -47,28 +47,32 @@ export default function TransactionModal({
   useEffect(() => {
     if (!isOpen) return;
 
-    if (editingTransaction) {
-      setTitle(editingTransaction.title);
-      setAmount(String(editingTransaction.amount));
-      setType(editingTransaction.type);
-      setCategory(editingTransaction.category);
-      setDate(editingTransaction.date ? editingTransaction.date.split('T')[0] : getInitialDateForMonth(currentMonth, currentYear));
-      setRepeat(false);
-    } else if (initialValues) {
-      setTitle(initialValues.title || '');
-      setAmount(initialValues.amount ? String(initialValues.amount) : '');
-      setType(initialValues.type || 'expense');
-      setCategory(initialValues.category || 'Alimentação');
-      setDate(initialValues.date || getInitialDateForMonth(currentMonth, currentYear));
-      setRepeat(false);
-    } else {
-      setTitle('');
-      setAmount('');
-      setType('expense');
-      setCategory('Alimentação');
-      setDate(getInitialDateForMonth(currentMonth, currentYear));
-      setRepeat(false);
-    }
+    const syncForm = async () => {
+      await Promise.resolve();
+      if (editingTransaction) {
+        setTitle(editingTransaction.title);
+        setAmount(String(editingTransaction.amount));
+        setType(editingTransaction.type);
+        setCategory(editingTransaction.category);
+        setDate(editingTransaction.date ? editingTransaction.date.split('T')[0] : getInitialDateForMonth(currentMonth, currentYear));
+        setRepeat(false);
+      } else if (initialValues) {
+        setTitle(initialValues.title || '');
+        setAmount(initialValues.amount ? String(initialValues.amount) : '');
+        setType(initialValues.type || 'expense');
+        setCategory(initialValues.category || 'Alimentação');
+        setDate(initialValues.date || getInitialDateForMonth(currentMonth, currentYear));
+        setRepeat(false);
+      } else {
+        setTitle('');
+        setAmount('');
+        setType('expense');
+        setCategory('Alimentação');
+        setDate(getInitialDateForMonth(currentMonth, currentYear));
+        setRepeat(false);
+      }
+    };
+    syncForm();
   }, [isOpen, editingTransaction, initialValues, currentMonth, currentYear, getInitialDateForMonth]);
 
   // Checagem se a data escolhida pertence a outro mês

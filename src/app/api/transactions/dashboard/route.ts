@@ -1,7 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseServer, verifyAuth } from '@/lib/serverAuth';
 
-const applyDateFilter = (query: any, month: string | null, year: string | null) => {
+interface DateFilterable {
+  gte(column: string, value: string): this;
+  lte(column: string, value: string): this;
+}
+
+interface DashboardTxItem {
+  amount: number | string;
+  type: string;
+  category: string;
+}
+
+const applyDateFilter = <T extends DateFilterable>(query: T, month: string | null, year: string | null): T => {
   if (month && year) {
     const m = parseInt(month, 10);
     const y = parseInt(year, 10);
@@ -36,8 +47,8 @@ export async function GET(req: NextRequest) {
   let totalExpense = 0;
   const expensesByCategory: Record<string, number> = {};
 
-  data.forEach((t: any) => {
-    const amount = parseFloat(t.amount);
+  ((data || []) as DashboardTxItem[]).forEach((t) => {
+    const amount = parseFloat(String(t.amount));
     if (t.type === 'income') {
       totalIncome += amount;
     } else if (t.type === 'expense') {

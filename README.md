@@ -12,6 +12,7 @@
   <img src="https://img.shields.io/badge/Supabase-3ECF8E?style=for-the-badge&logo=supabase&logoColor=white" alt="Supabase" />
   <img src="https://img.shields.io/badge/Google_Gemini-4285F4?style=for-the-badge&logo=google&logoColor=white" alt="Google Gemini" />
   <img src="https://img.shields.io/badge/PWA-Ready-5A0FC8?style=for-the-badge&logo=pwa&logoColor=white" alt="PWA Ready" />
+  <img src="https://img.shields.io/badge/Testes-20%20Passando-brightgreen?style=for-the-badge&logo=vitest&logoColor=white" alt="Testes Unitários" />
 </p>
 
 O **Lumin Finance** é uma plataforma full-stack moderna e completa de gestão orçamentária pessoal e executiva. Desenvolvido para oferecer controle financeiro com previsibilidade e clareza, o sistema integra **Inteligência Artificial Generativa (Google Gemini)** para diagnósticos em tempo real, relatórios anuais executivos com detalhamento de categorias, lançamento rápido com linguagem natural, suporte offline e arquitetura resiliente a fusos horários.
@@ -58,6 +59,27 @@ O **Lumin Finance** é uma plataforma full-stack moderna e completa de gestão o
 - Gravação padronizada em meio-dia UTC (`T12:00:00.000Z`), eliminando o problema clássico de recuo de data (-3h em relação a UTC 00:00 resultando no dia anterior).
 - Intervalos de consulta seguros cobrindo de `00:00:00.000Z` até `23:59:59.999Z`.
 
+### 7. 🎭 Modo de Demonstração Interativo (Zero-Config para Recrutadores)
+- **Acesso com 1 Clique:** Na tela de login, qualquer recrutador ou visitante pode clicar em *"Acessar Demonstração Interativa"* sem precisar criar conta ou digitar credenciais.
+- **Dataset Realista Completo:** Carrega automaticamente transações executivas, métricas de saldo, categorização inteligente, fluxo de caixa e diagnóstico analítico da IA sem tocar no banco de dados.
+- **Banner Persistente com Botão de Saída:** Faixa indicativa clara de modo demonstração no topo da aplicação com ação instantânea para encerrar e voltar ao login.
+
+---
+
+## 🔐 Segurança
+
+O Lumin Finance adota um modelo de autenticação focado em segurança máxima:
+
+- **Cookie HttpOnly exclusivo:** O JWT de autenticação trafega **apenas** em cookies `HttpOnly; Secure; SameSite=Lax`, nunca sendo exposto ao JavaScript do browser. Isso elimina por completo o risco de roubo de token via XSS.
+- **Sem token em `localStorage`:** O `localStorage` armazena somente os dados de exibição do usuário (nome de usuário), nunca o token de sessão.
+- **Proxy de autenticação server-side (`src/proxy.ts`):** O Next.js 16 intercepta todas as requisições antes de chegar às páginas — usuários não autenticados são redirecionados para `/login` sem que nenhum componente React seja sequer renderizado.
+- **Supabase com Service Role Key:** Todas as queries ao banco passam pelas Route Handlers server-side usando a `SUPABASE_SERVICE_ROLE_KEY`. O cliente Supabase anon nunca chega ao front-end.
+- **Role `anon` bloqueada:** Execute o script abaixo no Supabase para impedir acesso direto não autorizado via REST:
+
+```sql
+REVOKE ALL ON public.transactions, public.ai_analyses, public.custom_users FROM anon;
+```
+
 ---
 
 ## 🏗️ Arquitetura Clean Code & Full-Stack Unificado
@@ -65,6 +87,7 @@ O **Lumin Finance** é uma plataforma full-stack moderna e completa de gestão o
 O projeto adota uma arquitetura full-stack monolítica moderna baseada no **Next.js 16 (App Router)** com **Turbopack**, eliminando camadas intermediárias e reduzindo a complexidade de deploy para um único serviço na **Vercel**:
 
 - **Serverless Route Handlers (`src/app/api/`)**: Endpoints de autenticação, transações, relatórios e inteligência artificial rodando na mesma infraestrutura sem necessidade de servidor Express dedicado.
+- **Proxy de autenticação (`src/proxy.ts`)**: Guard server-side nativo do Next.js 16 que valida o cookie JWT antes de qualquer renderização.
 - **Descentralização dos Componentes ("God Components" eliminados)**: Telas divididas em subcomponentes atômicos com responsabilidade única (`src/components/dashboard`, `src/components/transactions`, `src/components/reports`).
 - **Custom Hooks Reutilizáveis**: Lógica de negócio desacoplada da interface via `useTransactions` e `useDashboard`.
 - **Single Source of Truth**: Tipos TypeScript centralizados (`src/types/finance.ts`), constantes canônicas (`src/constants/`) e utilitários puros de formatação (`src/utils/formatters.ts`).
@@ -74,11 +97,13 @@ O projeto adota uma arquitetura full-stack monolítica moderna baseada no **Next
 ## 🛠️ Tecnologias Utilizadas
 
 - **Framework Full-Stack:** Next.js 16 (App Router com Turbopack & Route Handlers Serverless) & React 19
-- **Linguagem:** TypeScript 5 com verificação estrita de tipos
+- **Linguagem:** TypeScript 5 com verificação estrita de tipos (`tsc --noEmit` sem erros)
 - **Estilização & UI:** Tailwind CSS v4, Lucide Icons & Recharts (gráficos dinâmicos)
 - **Banco de Dados & Auth:** Supabase (PostgreSQL) com JWT e Bcryptjs
 - **Inteligência Artificial:** Google Gemini (`gemini-1.5-flash`, `gemini-2.0-flash`) & OpenRouter API
 - **Offline & Mobile:** Progressive Web App (PWA), Service Worker e Fila Local com Sincronização Automática
+- **Testes:** Vitest com 20 testes unitários (parsers, formatadores, diagnóstico de IA)
+- **Qualidade de Código:** ESLint sem warnings, TypeScript estrito
 - **Hospedagem & CI/CD:** Vercel
 
 ---
@@ -144,9 +169,10 @@ ALTER TABLE public.ai_analyses ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ D
 CREATE UNIQUE INDEX IF NOT EXISTS idx_ai_analyses_user_month_year 
     ON public.ai_analyses(user_id, month, year);
 
--- Assegurar permissão de acesso desabilitando RLS (o controle é gerenciado pela camada de API JWT)
-ALTER TABLE public.transactions DISABLE ROW LEVEL SECURITY;
-ALTER TABLE public.ai_analyses DISABLE ROW LEVEL SECURITY;
+-- 4. Blindagem de Segurança (Role anon)
+-- Como a validação é gerenciada via Route Handlers com JWT e SUPABASE_SERVICE_ROLE_KEY,
+-- revogue o acesso da role anon para impedir requisições diretas não autorizadas via REST:
+REVOKE ALL ON public.transactions, public.ai_analyses, public.custom_users FROM anon;
 ```
 
 ---
@@ -179,9 +205,20 @@ JWT_SECRET=seu_jwt_secret_forte_e_seguro
 GEMINI_API_KEY=sua_gemini_api_key
 ```
 
-### 3. Instalar Dependências e Iniciar
+### 3. Instalar Dependências, Testar e Iniciar
 ```bash
 npm install
+
+# Executar a suíte de testes unitários (Vitest — 20 testes)
+npm test
+
+# Verificar tipos TypeScript
+npx tsc --noEmit
+
+# Verificar qualidade do código
+npm run lint
+
+# Iniciar o servidor de desenvolvimento
 npm run dev
 ```
 
@@ -211,10 +248,11 @@ O projeto está 100% configurado para deploy automático na Vercel:
 lumin-finance/
 ├── public/                        # Ícones PWA, manifest.json e Service Worker
 ├── src/
+│   ├── proxy.ts                   # Guard de autenticação server-side (Next.js 16)
 │   ├── app/
 │   │   ├── api/                   # Route Handlers serverless (Full-Stack Next.js)
 │   │   │   ├── ai/advisor/        # Parecer consultivo com Gemini e cache no DB
-│   │   │   ├── auth/              # Login, registro e logout com JWT
+│   │   │   ├── auth/              # Login, registro e logout com JWT + cookie HttpOnly
 │   │   │   └── transactions/      # CRUD de lançamentos, filtros e yearly
 │   │   ├── login/                 # Página de autenticação
 │   │   ├── reports/               # Relatório Anual Executivo
@@ -236,7 +274,13 @@ lumin-finance/
 │   ├── hooks/                     # useTransactions e useDashboard (Clean Code Hooks)
 │   ├── lib/                       # serverAuth.ts (validação de JWT e Supabase Server)
 │   ├── types/                     # Tipos TypeScript centralizados (finance.ts)
-│   └── utils/                     # aiAdvisor, csvExport, formatters, offlineQueue, quickAddParser
+│   └── utils/
+│       ├── __tests__/             # Testes unitários (Vitest) — 20 testes
+│       ├── aiAdvisor.ts           # Diagnóstico financeiro determinístico
+│       ├── csvExport.ts
+│       ├── formatters.ts
+│       ├── offlineQueue.ts        # Fila offline com sync via cookie (sem token exposto)
+│       └── quickAddParser.ts      # Parser de linguagem natural
 ├── .env.example                   # Modelo de variáveis de ambiente
 ├── next.config.ts                 # Configurações do Next.js
 ├── package.json                   # Dependências e scripts do projeto
@@ -249,4 +293,4 @@ lumin-finance/
 ## 📄 Licença
 Distribuído sob a licença MIT. Consulte `LICENSE` para mais detalhes.
 
-Desenvolvido com excelência por [Eduardo Braga](https://github.com/EduBraga7).
+Desenvolvido com excelência por [Eduardo Braga](https://bragaweb.netlify.app/).

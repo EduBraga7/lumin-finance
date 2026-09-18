@@ -5,11 +5,12 @@ import { useAuth } from '@/context/AuthContext';
 import { DashboardData, Transaction, CategoryRankingItem } from '@/types/finance';
 import { AiDiagnosis, generateAiDiagnosisFromData } from '@/utils/aiAdvisor';
 import { CATEGORY_COLORS, CATEGORY_EMOJIS } from '@/constants/categories';
+import { DEMO_DASHBOARD, DEMO_TRANSACTIONS, DEMO_AI_DIAGNOSIS } from '@/utils/demoData';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || '';
 
 export function useDashboard(month: number, year: number) {
-  const { session } = useAuth();
+  const { user, isDemoMode } = useAuth();
   const [dashboard, setDashboard] = useState<DashboardData | null>(null);
   const [monthTransactions, setMonthTransactions] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(true);
@@ -24,6 +25,12 @@ export function useDashboard(month: number, year: number) {
 
   const fetchAiDiagnosis = useCallback(
     async (currentDash?: DashboardData | null, forceRefresh = false) => {
+      // Modo demo: retorna diagnóstico mockado
+      if (isDemoMode) {
+        setAiDiagnosis(DEMO_AI_DIAGNOSIS);
+        return;
+      }
+
       const dashToUse = currentDash !== undefined ? currentDash : dashboardRef.current;
       if (!dashToUse) return;
 
@@ -33,9 +40,7 @@ export function useDashboard(month: number, year: number) {
         const refreshParam = forceRefresh ? '&refresh=true' : '';
         const res = await fetch(
           `${API_URL}/api/ai/advisor?month=${month}&year=${year}${refreshParam}`,
-          {
-            headers: { Authorization: `Bearer ${session?.access_token}` },
-          }
+          { credentials: 'include' }
         );
 
         if (res.ok) {
@@ -64,20 +69,40 @@ export function useDashboard(month: number, year: number) {
         setLoadingAi(false);
       }
     },
-    [session, month, year]
+    [isDemoMode, month, year]
   );
 
   const fetchDashboard = useCallback(async () => {
-    if (!session?.access_token) return;
+    if (!user) return;
+
+    // Modo demo: retorna dados mockados para setembro/2026; outros meses retornam vazio
+    if (isDemoMode) {
+      if (month === 9 && year === 2026) {
+        setDashboard(DEMO_DASHBOARD);
+        const filtered = DEMO_TRANSACTIONS.filter((t) => {
+          const d = new Date(t.date);
+          return d.getUTCMonth() + 1 === month && d.getUTCFullYear() === year;
+        });
+        setMonthTransactions(filtered);
+        setAiDiagnosis(DEMO_AI_DIAGNOSIS);
+      } else {
+        setDashboard({ totalIncome: 0, totalExpense: 0, balance: 0, expensesByCategory: {} });
+        setMonthTransactions([]);
+        setAiDiagnosis(null);
+      }
+      setLoading(false);
+      return;
+    }
+
     setLoading(true);
 
     try {
       const [dashRes, txRes] = await Promise.all([
         fetch(`${API_URL}/api/transactions/dashboard?month=${month}&year=${year}`, {
-          headers: { Authorization: `Bearer ${session.access_token}` },
+          credentials: 'include',
         }),
         fetch(`${API_URL}/api/transactions?month=${month}&year=${year}&status=paid`, {
-          headers: { Authorization: `Bearer ${session.access_token}` },
+          credentials: 'include',
         }),
       ]);
 
@@ -101,10 +126,20 @@ export function useDashboard(month: number, year: number) {
     } finally {
       setLoading(false);
     }
-  }, [session, month, year, fetchAiDiagnosis]);
+  }, [user, isDemoMode, month, year, fetchAiDiagnosis]);
 
   useEffect(() => {
-    fetchDashboard();
+    let ignore = false;
+    const run = async () => {
+      await Promise.resolve();
+      if (!ignore) {
+        fetchDashboard();
+      }
+    };
+    run();
+    return () => {
+      ignore = true;
+    };
   }, [fetchDashboard]);
 
   const pieData = useMemo(() => {

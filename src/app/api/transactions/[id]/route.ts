@@ -27,8 +27,9 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
     if (!data || data.length === 0) return NextResponse.json({ error: 'Transação não encontrada.' }, { status: 404 });
 
     return NextResponse.json(data[0]);
-  } catch (err: any) {
-    return NextResponse.json({ error: err.message || 'Erro ao atualizar' }, { status: 500 });
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : 'Erro ao atualizar';
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }
 

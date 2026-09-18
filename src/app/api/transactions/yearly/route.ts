@@ -10,8 +10,15 @@ export async function GET(req: NextRequest) {
   const yearParam = searchParams.get('year');
   const targetYear = yearParam ? parseInt(yearParam) : new Date().getFullYear();
 
-  const startDate = `${targetYear}-01-01`;
-  const endDate = `${targetYear}-12-31`;
+  const startDate = `${targetYear}-01-01T00:00:00.000Z`;
+  const endDate = `${targetYear}-12-31T23:59:59.999Z`;
+
+  interface YearlyTxRow {
+    amount: number | string;
+    type: string;
+    date: string;
+    is_paid?: boolean;
+  }
 
   const { data, error } = await supabaseServer
     .from('transactions')
@@ -39,9 +46,9 @@ export async function GET(req: NextRequest) {
     { name: 'Dez', income: 0, expense: 0 },
   ];
 
-  data.forEach((t: any) => {
-    const monthIndex = parseInt(t.date.split('-')[1]) - 1;
-    const amount = parseFloat(t.amount);
+  ((data || []) as YearlyTxRow[]).forEach((t) => {
+    const monthIndex = parseInt(t.date.split('-')[1], 10) - 1;
+    const amount = parseFloat(String(t.amount));
 
     if (t.type === 'income') {
       monthsMap[monthIndex].income += amount;

@@ -43,7 +43,8 @@ export function generateAiDiagnosisFromData(
   const savingsRate = totalIncome > 0 ? ((balance / totalIncome) * 100) : -100;
 
   // Encontra as 2 maiores categorias de gastos
-  const sortedCategories = Object.entries(expensesByCategory)
+  const safeExpenses = expensesByCategory || {};
+  const sortedCategories = Object.entries(safeExpenses)
     .sort(([, a], [, b]) => b - a);
 
   const topCategory = sortedCategories[0];

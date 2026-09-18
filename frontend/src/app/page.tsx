@@ -88,21 +88,58 @@ export default function Home() {
       const res = await fetch(`${API_URL}/api/ai/advisor?month=${month}&year=${year}${refreshParam}`, {
         headers: { 'Authorization': `Bearer ${session?.access_token}` }
       });
-      const baseDiag = generateAiDiagnosisFromData(dashToUse, month, year);
+
       if (res.ok) {
         const data = await res.json();
-        setAiDiagnosis({
-          ...baseDiag,
-          aiAdviceText: data.advice,
-          updatedAt: data.updated_at || new Date().toISOString(),
-          cached: Boolean(data.cached)
-        });
-      } else {
-        setAiDiagnosis({
-          ...baseDiag,
-          updatedAt: new Date().toISOString(),
-          cached: false
-        });
+        if (data.summary) {
+          setAiDiagnosis({
+            status: data.status || 'good',
+            statusText: data.statusText || data.status_text || 'Orçamento Equilibrado',
+            summary: data.summary,
+            insights: Array.isArray(data.insights) ? data.insights : [],
+            aiAdviceText: data.advice,
+            updatedAt: data.updated_at || new Date().toISOString(),
+            cached: Boolean(data.cached)
+          });
+          return;
+        } else if (data.advice) {
+          const baseDiag = generateAiDiagnosisFromData(dashToUse, month, year);
+          setAiDiagnosis({
+            ...baseDiag,
+            aiAdviceText: data.advice,
+            updatedAt: data.updated_at || new Date().toISOString(),
+            cached: Boolean(data.cached)
+          });
+          return;
+        }
+      }
+
+      // Fallback local se a resposta não vier estruturada
+      const baseDiag = generateAiDiagnosisFromData(dashToUse, month, year);
+      setAiDiagnosis({
+        ...baseDiag,
+        updatedAt: new Date().toISOString(),
+        cached: false
+      });
+
+      // Salva o diagnóstico gerado no Supabase para os próximos acessos
+      if (session?.access_token) {
+        fetch(`${API_URL}/api/ai/advisor`, {
+          method: 'POST',
+          headers: { 
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${session.access_token}` 
+          },
+          body: JSON.stringify({
+            month,
+            year,
+            summary: baseDiag.summary,
+            status: baseDiag.status,
+            statusText: baseDiag.statusText,
+            insights: baseDiag.insights,
+            advice: baseDiag.aiAdviceText || baseDiag.summary
+          })
+        }).catch(syncErr => console.warn('Sync de diagnóstico em segundo plano falhou:', syncErr));
       }
     } catch (err) {
       console.warn('Fallback para diagnóstico estruturado:', err);

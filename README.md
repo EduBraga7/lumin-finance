@@ -74,54 +74,65 @@ O **Lumin Finance** é uma plataforma moderna e completa de gestão orçamentár
 Para o correto funcionamento do cache de IA e das transações, execute o script SQL abaixo no **SQL Editor** do seu projeto Supabase:
 
 ```sql
--- 1. Tabela de Transações Financeiras
+-- 1. Tabela de Usuários Customizados (se ainda não tiver)
+CREATE TABLE IF NOT EXISTS public.custom_users (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    username TEXT UNIQUE NOT NULL,
+    password TEXT NOT NULL,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- 2. Tabela de Transações Financeiras
 CREATE TABLE IF NOT EXISTS public.transactions (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
-    description TEXT NOT NULL,
+    user_id UUID NOT NULL,
+    title TEXT NOT NULL,
     amount NUMERIC(12, 2) NOT NULL,
     type VARCHAR(10) NOT NULL CHECK (type IN ('income', 'expense')),
     category VARCHAR(50) NOT NULL,
     date TIMESTAMPTZ NOT NULL,
+    is_paid BOOLEAN DEFAULT true,
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- Índices para alta performance de consulta
 CREATE INDEX IF NOT EXISTS idx_transactions_user_date 
     ON public.transactions(user_id, date);
 
--- 2. Tabela de Cache de Análises da IA (Lumin AI Advisor)
+-- 3. Tabela de Cache e Histórico das Análises da IA (Lumin AI Advisor)
 CREATE TABLE IF NOT EXISTS public.ai_analyses (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
-    month_key VARCHAR(7) NOT NULL, -- Exemplo: '2026-09'
-    summary TEXT NOT NULL,
-    status VARCHAR(20) NOT NULL DEFAULT 'Saudável',
-    alerts JSONB DEFAULT '[]'::jsonb,
-    recommendations JSONB DEFAULT '[]'::jsonb,
-    metrics JSONB DEFAULT '{}'::jsonb,
+    user_id UUID NOT NULL,
+    month INTEGER NOT NULL,
+    year INTEGER NOT NULL,
+    month_key VARCHAR(7), -- Exemplo: '2026-09'
+    summary TEXT,
+    status VARCHAR(30) DEFAULT 'good',
+    status_text VARCHAR(100),
+    insights JSONB DEFAULT '[]'::jsonb,
+    advice TEXT,
     created_at TIMESTAMPTZ DEFAULT NOW(),
-    updated_at TIMESTAMPTZ DEFAULT NOW(),
-    CONSTRAINT unique_user_month_analysis UNIQUE (user_id, month_key)
+    updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- Habilitar Row Level Security (RLS)
-ALTER TABLE public.transactions ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.ai_analyses ENABLE ROW LEVEL SECURITY;
+-- Caso a tabela ai_analyses já tenha sido criada anteriormente, assegure todas as colunas:
+ALTER TABLE public.ai_analyses ADD COLUMN IF NOT EXISTS user_id UUID;
+ALTER TABLE public.ai_analyses ADD COLUMN IF NOT EXISTS month INTEGER;
+ALTER TABLE public.ai_analyses ADD COLUMN IF NOT EXISTS year INTEGER;
+ALTER TABLE public.ai_analyses ADD COLUMN IF NOT EXISTS month_key VARCHAR(7);
+ALTER TABLE public.ai_analyses ADD COLUMN IF NOT EXISTS summary TEXT;
+ALTER TABLE public.ai_analyses ADD COLUMN IF NOT EXISTS status VARCHAR(30);
+ALTER TABLE public.ai_analyses ADD COLUMN IF NOT EXISTS status_text VARCHAR(100);
+ALTER TABLE public.ai_analyses ADD COLUMN IF NOT EXISTS insights JSONB DEFAULT '[]'::jsonb;
+ALTER TABLE public.ai_analyses ADD COLUMN IF NOT EXISTS advice TEXT;
+ALTER TABLE public.ai_analyses ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT NOW();
 
--- Políticas de Acesso (RLS) para Transactions
-CREATE POLICY "Usuários gerenciam suas transações"
-    ON public.transactions
-    FOR ALL
-    USING (auth.uid() = user_id)
-    WITH CHECK (auth.uid() = user_id);
+-- Garante que cada usuário possua apenas 1 registro por competência mensal
+CREATE UNIQUE INDEX IF NOT EXISTS idx_ai_analyses_user_month_year 
+    ON public.ai_analyses(user_id, month, year);
 
--- Políticas de Acesso (RLS) para AI Analyses
-CREATE POLICY "Usuários gerenciam suas análises de IA"
-    ON public.ai_analyses
-    FOR ALL
-    USING (auth.uid() = user_id)
-    WITH CHECK (auth.uid() = user_id);
+-- Assegurar permissão de acesso desabilitando RLS (o controle é gerenciado pela camada de API JWT)
+ALTER TABLE public.transactions DISABLE ROW LEVEL SECURITY;
+ALTER TABLE public.ai_analyses DISABLE ROW LEVEL SECURITY;
 ```
 
 ---

@@ -6,13 +6,14 @@
   </a>
   <img src="https://img.shields.io/badge/Next.js_16-000000?style=for-the-badge&logo=next.js&logoColor=white" alt="Next.js" />
   <img src="https://img.shields.io/badge/React_19-61DAFB?style=for-the-badge&logo=react&logoColor=black" alt="React" />
+  <img src="https://img.shields.io/badge/TypeScript_5-3178C6?style=for-the-badge&logo=typescript&logoColor=white" alt="TypeScript" />
   <img src="https://img.shields.io/badge/Tailwind_CSS-38B2AC?style=for-the-badge&logo=tailwind-css&logoColor=white" alt="Tailwind CSS" />
-  <img src="https://img.shields.io/badge/Express-000000?style=for-the-badge&logo=express&logoColor=white" alt="Express" />
   <img src="https://img.shields.io/badge/Supabase-3ECF8E?style=for-the-badge&logo=supabase&logoColor=white" alt="Supabase" />
   <img src="https://img.shields.io/badge/Google_Gemini-4285F4?style=for-the-badge&logo=google&logoColor=white" alt="Google Gemini" />
+  <img src="https://img.shields.io/badge/PWA-Ready-5A0FC8?style=for-the-badge&logo=pwa&logoColor=white" alt="PWA Ready" />
 </p>
 
-O **Lumin Finance** é uma plataforma moderna e completa de gestão orçamentária pessoal e executiva. Desenvolvido para oferecer controle financeiro com previsibilidade e clareza, o sistema integra **Inteligência Artificial Generativa (Google Gemini)** para diagnósticos em tempo real, relatórios anuais executivos com detalhamento de categorias, lançamento rápido com linguagem natural e arquitetura resiliente a fusos horários.
+O **Lumin Finance** é uma plataforma full-stack moderna e completa de gestão orçamentária pessoal e executiva. Desenvolvido para oferecer controle financeiro com previsibilidade e clareza, o sistema integra **Inteligência Artificial Generativa (Google Gemini)** para diagnósticos em tempo real, relatórios anuais executivos com detalhamento de categorias, lançamento rápido com linguagem natural, suporte offline e arquitetura resiliente a fusos horários.
 
 ---
 
@@ -35,6 +36,7 @@ O **Lumin Finance** é uma plataforma moderna e completa de gestão orçamentár
   - O modal de novo lançamento pré-preenche a data de acordo com o mês selecionado no filtro.
   - Alerta visual preventivo quando a data escolhida difere do mês em exibição.
 - **Filtros e Busca em Tempo Real:** Pesquisa instantânea por descrição e filtro por tipo (*Todas, Receitas, Despesas*) e categorias.
+- **Exportação CSV:** Exportação com um clique de lançamentos formatados e seguros.
 
 ### 3. 🧠 Lumin AI Advisor (Google Gemini) com Cache Inteligente
 - **Diagnóstico Automatizado:** Avaliação do perfil financeiro (Saudável, Atenção ou Crítico), alertas de desvios orçamentários e recomendações táticas personalizadas.
@@ -47,25 +49,36 @@ O **Lumin Finance** é uma plataforma moderna e completa de gestão orçamentár
 - **Demonstrativo Mês a Mês:** Tabela completa com receitas, despesas, saldo líquido e taxa de poupança mensal.
 - **Detalhamento Interativo de Gastos por Categoria:** Ao selecionar qualquer categoria de despesa, é exibido o raio-x detalhado de onde o dinheiro foi gasto naquele grupo.
 
-### 5. 🌐 Tratamento Rigoroso de Fuso Horário (UTC-3 / Brasil)
+### 5. 📴 PWA & Suporte Offline-First
+- **Progressive Web App (PWA):** Instalação nativa em dispositivos móveis e desktop via Service Worker e Web App Manifest.
+- **Fila Offline com Sincronização Automática:** Lançamentos criados sem internet são armazenados localmente e sincronizados de forma transparente assim que a conexão é restabelecida.
+
+### 6. 🌐 Tratamento Rigoroso de Fuso Horário (UTC-3 / Brasil)
 - Gravação padronizada em meio-dia UTC (`T12:00:00.000Z`), eliminando o problema clássico de recuo de data (-3h em relação a UTC 00:00 resultando no dia anterior).
 - Intervalos de consulta seguros cobrindo de `00:00:00.000Z` até `23:59:59.999Z`.
 
 ---
 
+## 🏗️ Arquitetura Clean Code & Full-Stack Unificado
+
+O projeto adota uma arquitetura full-stack monolítica moderna baseada no **Next.js 16 (App Router)** com **Turbopack**, eliminando camadas intermediárias e reduzindo a complexidade de deploy para um único serviço na **Vercel**:
+
+- **Serverless Route Handlers (`src/app/api/`)**: Endpoints de autenticação, transações, relatórios e inteligência artificial rodando na mesma infraestrutura sem necessidade de servidor Express dedicado.
+- **Descentralização dos Componentes ("God Components" eliminados)**: Telas divididas em subcomponentes atômicos com responsabilidade única (`src/components/dashboard`, `src/components/transactions`, `src/components/reports`).
+- **Custom Hooks Reutilizáveis**: Lógica de negócio desacoplada da interface via `useTransactions` e `useDashboard`.
+- **Single Source of Truth**: Tipos TypeScript centralizados (`src/types/finance.ts`), constantes canônicas (`src/constants/`) e utilitários puros de formatação (`src/utils/formatters.ts`).
+
+---
+
 ## 🛠️ Tecnologias Utilizadas
 
-### **Frontend** (`/frontend`)
-- **Framework:** Next.js 16 (App Router com Turbopack) & React 19
-- **Estilização:** Tailwind CSS & Lucide Icons
-- **Gráficos:** Recharts
-- **Persistência de Sessão:** Context API com Supabase Auth & JWT
-
-### **Backend** (`/backend`)
-- **Runtime:** Node.js com Express
-- **Banco de Dados:** Supabase (PostgreSQL)
-- **IA Generativa:** Google Generative AI (`@google/genai` e Gemini Pro/Flash)
-- **Segurança:** Bcryptjs e JsonWebToken
+- **Framework Full-Stack:** Next.js 16 (App Router com Turbopack & Route Handlers Serverless) & React 19
+- **Linguagem:** TypeScript 5 com verificação estrita de tipos
+- **Estilização & UI:** Tailwind CSS v4, Lucide Icons & Recharts (gráficos dinâmicos)
+- **Banco de Dados & Auth:** Supabase (PostgreSQL) com JWT e Bcryptjs
+- **Inteligência Artificial:** Google Gemini (`gemini-1.5-flash`, `gemini-2.0-flash`) & OpenRouter API
+- **Offline & Mobile:** Progressive Web App (PWA), Service Worker e Fila Local com Sincronização Automática
+- **Hospedagem & CI/CD:** Vercel
 
 ---
 
@@ -150,35 +163,23 @@ git clone https://github.com/EduBraga7/lumin-finance.git
 cd lumin-finance
 ```
 
-### 2. Configurar o Backend
-Crie um arquivo `backend/.env` com as seguintes variáveis:
-```env
-PORT=3001
-SUPABASE_URL=https://seu-projeto.supabase.co
-SUPABASE_SERVICE_ROLE_KEY=sua_service_role_key
-JWT_SECRET=seu_jwt_secret_seguro
-GEMINI_API_KEY=sua_gemini_api_key
-```
-
-Instale as dependências e inicie o backend:
+### 2. Configurar as Variáveis de Ambiente
+Copie o arquivo de exemplo e crie o seu `.env.local`:
 ```bash
-cd backend
-npm install
-npm run dev
+cp .env.example .env.local
 ```
 
-### 3. Configurar o Frontend
-Crie um arquivo `frontend/.env.local` com as seguintes variáveis:
+Preencha as variáveis no `.env.local`:
 ```env
 NEXT_PUBLIC_SUPABASE_URL=https://seu-projeto.supabase.co
 NEXT_PUBLIC_SUPABASE_ANON_KEY=sua_anon_key
-NEXT_PUBLIC_API_URL=http://localhost:3001/api
+SUPABASE_SERVICE_ROLE_KEY=sua_service_role_key
+JWT_SECRET=seu_jwt_secret_forte_e_seguro
 GEMINI_API_KEY=sua_gemini_api_key
 ```
 
-Instale as dependências e inicie o frontend:
+### 3. Instalar Dependências e Iniciar
 ```bash
-cd ../frontend
 npm install
 npm run dev
 ```
@@ -187,35 +188,58 @@ O aplicativo estará disponível em: `http://localhost:3000`.
 
 ---
 
+## 🚀 Deploy na Vercel
+
+O projeto está 100% configurado para deploy automático na Vercel:
+
+1. Importe o repositório [`EduBraga7/lumin-finance`](https://github.com/EduBraga7/lumin-finance) na sua conta Vercel.
+2. Certifique-se de que o **Root Directory** esteja configurado como `./` (raiz).
+3. Adicione as variáveis de ambiente em **Project Settings > Environment Variables**:
+   - `NEXT_PUBLIC_SUPABASE_URL`
+   - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+   - `SUPABASE_SERVICE_ROLE_KEY`
+   - `JWT_SECRET`
+   - `GEMINI_API_KEY`
+4. Clique em **Deploy**.
+
+---
+
 ## 📁 Estrutura de Diretórios
 
 ```text
 lumin-finance/
-├── backend/
-│   ├── src/
-│   │   ├── routes/
-│   │   │   ├── ai.js              # Rota com Gemini AI e cache no ai_analyses
-│   │   │   ├── auth.js            # Cadastro e login JWT
-│   │   │   └── transactions.js    # CRUD de transações e dashboards
-│   │   ├── index.js               # Entrada do servidor Express
-│   │   └── supabase.js            # Cliente Supabase com Service Role
-│   └── package.json
-├── frontend/
-│   ├── src/
-│   │   ├── app/
-│   │   │   ├── api/               # Next.js API Routes (rotas serverless e fallbacks)
-│   │   │   ├── login/             # Tela de login e cadastro
-│   │   │   ├── reports/           # Relatório Anual Executivo e Drill-down de categorias
-│   │   │   ├── transactions/      # Extrato inteligente e Lançamento Rápido
-│   │   │   ├── layout.tsx         # Layout raiz com Sidebar e BottomNav
-│   │   │   └── page.tsx           # Dashboard Principal e Card da IA
-│   │   ├── components/            # Sidebar, BottomNav, MonthSelector, etc.
-│   │   ├── context/               # AuthContext para sessão e autenticação
-│   │   ├── utils/
-│   │   │   ├── aiAdvisor.ts       # Algoritmo de diagnóstico e interfaces de IA
-│   │   │   └── quickAddParser.ts  # Parser de linguagem natural para lançamentos
-│   │   └── lib/                   # Supabase client helpers
-│   └── package.json
+├── public/                        # Ícones PWA, manifest.json e Service Worker
+├── src/
+│   ├── app/
+│   │   ├── api/                   # Route Handlers serverless (Full-Stack Next.js)
+│   │   │   ├── ai/advisor/        # Parecer consultivo com Gemini e cache no DB
+│   │   │   ├── auth/              # Login, registro e logout com JWT
+│   │   │   └── transactions/      # CRUD de lançamentos, filtros e yearly
+│   │   ├── login/                 # Página de autenticação
+│   │   ├── reports/               # Relatório Anual Executivo
+│   │   ├── transactions/          # Extrato inteligente e Lançamento Rápido
+│   │   ├── layout.tsx             # Root layout com PWA e Providers
+│   │   └── page.tsx               # Dashboard Executivo e Lumin AI Advisor
+│   ├── components/                # Componentes modulares de UI
+│   │   ├── dashboard/             # AiAdvisorCard, CategoryExpenseChart, DrilldownModal
+│   │   ├── reports/               # AnnualKpiCards, AnnualCashFlowChart, AnnualSummaryTable
+│   │   ├── transactions/          # QuickAddBar, TransactionFilters, Table, Modal, SummaryCards
+│   │   ├── AppLayoutWrapper.tsx
+│   │   ├── BottomNav.tsx
+│   │   ├── MonthSelector.tsx
+│   │   ├── OfflineSyncBanner.tsx
+│   │   ├── RegisterSW.tsx
+│   │   └── Sidebar.tsx
+│   ├── constants/                 # Cores de categorias, emojis e meses (Single Source of Truth)
+│   ├── context/                   # AuthContext e DateFilterContext
+│   ├── hooks/                     # useTransactions e useDashboard (Clean Code Hooks)
+│   ├── lib/                       # serverAuth.ts (validação de JWT e Supabase Server)
+│   ├── types/                     # Tipos TypeScript centralizados (finance.ts)
+│   └── utils/                     # aiAdvisor, csvExport, formatters, offlineQueue, quickAddParser
+├── .env.example                   # Modelo de variáveis de ambiente
+├── next.config.ts                 # Configurações do Next.js
+├── package.json                   # Dependências e scripts do projeto
+├── tsconfig.json                  # Configuração TypeScript
 └── README.md
 ```
 

@@ -4,6 +4,7 @@ import "./globals.css";
 import { AuthProvider } from "@/context/AuthContext";
 import { DateFilterProvider } from '@/context/DateFilterContext';
 import AppLayoutWrapper from "@/components/AppLayoutWrapper";
+import RegisterSW from "@/components/RegisterSW";
 
 export const metadata: Metadata = {
   title: "Lumin Finance — Gestão Financeira Inteligente",
@@ -29,8 +30,6 @@ export const viewport = {
   userScalable: false,
   viewportFit: "cover",
 };
-
-import RegisterSW from "@/components/RegisterSW";
 
 export default function RootLayout({
   children,

@@ -69,7 +69,7 @@ export function cacheTransactionsLocally(month: number, year: number, data: unkn
   }
 }
 
-export function getCachedTransactionsLocally<T = any>(month: number, year: number): T[] {
+export function getCachedTransactionsLocally<T = unknown>(month: number, year: number): T[] {
   if (typeof window === 'undefined') return [];
   try {
     const raw = localStorage.getItem(`${CACHE_PREFIX}${month}_${year}`);

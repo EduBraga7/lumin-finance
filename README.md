@@ -4,7 +4,7 @@
   <a href="https://lumin-finance-taupe.vercel.app">
     <img src="https://img.shields.io/badge/Demo_Online-Vercel-black?style=for-the-badge&logo=vercel&logoColor=white" alt="Demo Online" />
   </a>
-  <img src="https://img.shields.io/badge/Versão-0.2.0-blue?style=for-the-badge" alt="Versão 0.2.0" />
+  <img src="https://img.shields.io/badge/Versão-0.2.1-blue?style=for-the-badge" alt="Versão 0.2.1" />
   <img src="https://img.shields.io/badge/Next.js_16-000000?style=for-the-badge&logo=next.js&logoColor=white" alt="Next.js" />
   <img src="https://img.shields.io/badge/React_19-61DAFB?style=for-the-badge&logo=react&logoColor=black" alt="React" />
   <img src="https://img.shields.io/badge/TypeScript_5-3178C6?style=for-the-badge&logo=typescript&logoColor=white" alt="TypeScript" />

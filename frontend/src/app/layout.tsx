@@ -17,12 +17,17 @@ import { DateFilterProvider } from '@/context/DateFilterContext';
 import AppLayoutWrapper from "@/components/AppLayoutWrapper";
 
 export const metadata: Metadata = {
-  title: "Lumin Finance",
-  description: "Gerenciador de finanças pessoais criado com Next.js",
+  title: "Lumin Finance — Gestão Financeira Inteligente",
+  description: "Gerenciador de finanças pessoais com IA, extrato em tempo real e projeção patrimonial",
   manifest: "/manifest.json",
+  icons: {
+    icon: "/icon-192.png",
+    shortcut: "/icon-192.png",
+    apple: "/apple-touch-icon.png",
+  },
   appleWebApp: {
     capable: true,
-    statusBarStyle: "default",
+    statusBarStyle: "black-translucent",
     title: "Lumin Finance",
   },
 };

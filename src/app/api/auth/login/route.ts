@@ -55,7 +55,7 @@ export async function POST(req: NextRequest) {
 
     // 4. Generate and set CSRF token
     const csrfToken = generateCsrfToken();
-    setCsrfCookie(csrfToken);
+    await setCsrfCookie(csrfToken);
 
     // 5. Retornar dados com Cookie HttpOnly seguro
     const response = NextResponse.json({ 

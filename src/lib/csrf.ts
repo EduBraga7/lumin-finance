@@ -11,8 +11,9 @@ export function generateCsrfToken(): string {
 }
 
 // Set CSRF token in cookie
-export function setCsrfCookie(token: string): void {
-  cookies().set(CSRF_COOKIE_NAME, token, {
+export async function setCsrfCookie(token: string): Promise<void> {
+  const cookieStore = await cookies();
+  cookieStore.set(CSRF_COOKIE_NAME, token, {
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
     sameSite: 'strict',
@@ -22,13 +23,14 @@ export function setCsrfCookie(token: string): void {
 }
 
 // Get CSRF token from cookie
-export function getCsrfCookie(): string | undefined {
-  return cookies().get(CSRF_COOKIE_NAME)?.value;
+export async function getCsrfCookie(): Promise<string | undefined> {
+  const cookieStore = await cookies();
+  return cookieStore.get(CSRF_COOKIE_NAME)?.value;
 }
 
 // Validate CSRF token from request
-export function validateCsrfToken(token: string | null): boolean {
-  const cookieToken = getCsrfCookie();
+export async function validateCsrfToken(token: string | null): Promise<boolean> {
+  const cookieToken = await getCsrfCookie();
   if (!cookieToken || !token) {
     return false;
   }
@@ -41,7 +43,7 @@ export function getCsrfTokenFromRequest(req: Request): string | null {
 }
 
 // Middleware to validate CSRF for state-changing requests
-export function csrfProtection(req: Request): boolean {
+export async function csrfProtection(req: Request): Promise<boolean> {
   const method = req.method.toUpperCase();
   
   // Only validate for state-changing methods
@@ -50,5 +52,5 @@ export function csrfProtection(req: Request): boolean {
   }
 
   const token = getCsrfTokenFromRequest(req);
-  return validateCsrfToken(token);
+  return await validateCsrfToken(token);
 }

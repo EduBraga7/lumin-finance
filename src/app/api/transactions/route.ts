@@ -81,7 +81,7 @@ export async function POST(req: NextRequest) {
   if (!user) return NextResponse.json({ error: 'Token inválido ou não fornecido' }, { status: 401 });
 
   // CSRF protection
-  if (!csrfProtection(req)) {
+  if (!(await csrfProtection(req))) {
     return NextResponse.json({ error: 'Token CSRF inválido ou não fornecido' }, { status: 403 });
   }
 

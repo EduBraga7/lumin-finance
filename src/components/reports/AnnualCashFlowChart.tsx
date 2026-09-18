@@ -9,7 +9,7 @@ interface AnnualCashFlowChartProps {
   year: number;
 }
 
-export const AnnualCashFlowChart: React.FC<AnnualCashFlowChartProps> = ({ data, year }) => {
+export default function AnnualCashFlowChart({ data, year }: AnnualCashFlowChartProps) {
   return (
     <div className="glass-card" style={{ marginBottom: '2rem' }}>
       <div className="card-header">

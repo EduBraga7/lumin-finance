@@ -10,7 +10,7 @@ interface AnnualSummaryTableProps {
   year: number;
 }
 
-export const AnnualSummaryTable: React.FC<AnnualSummaryTableProps> = ({ data, summary, year }) => {
+export default function AnnualSummaryTable({ data, summary, year }: AnnualSummaryTableProps) {
   return (
     <div className="glass-card">
       <div className="card-header">

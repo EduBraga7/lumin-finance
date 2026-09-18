@@ -8,7 +8,7 @@ interface AnnualKpiCardsProps {
   summary: AnnualSummary;
 }
 
-export const AnnualKpiCards: React.FC<AnnualKpiCardsProps> = ({ summary }) => {
+export default function AnnualKpiCards({ summary }: AnnualKpiCardsProps) {
   const { bestMonth, worstExpenseMonth } = summary;
 
   return (

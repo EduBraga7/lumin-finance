@@ -11,9 +11,36 @@ export async function GET(req: NextRequest) {
     const { searchParams } = new URL(req.url);
     const month = searchParams.get('month');
     const year = searchParams.get('year');
+    const refresh = searchParams.get('refresh') === 'true';
 
     if (!month || !year) {
       return NextResponse.json({ error: 'Mês e ano são obrigatórios.' }, { status: 400 });
+    }
+
+    const m = parseInt(month, 10);
+    const y = parseInt(year, 10);
+
+    // 1. Se não for refresh forçado, verifica se já existe análise no banco para este mês
+    if (!refresh) {
+      try {
+        const { data: cached } = await supabaseServer
+          .from('ai_analyses')
+          .select('*')
+          .eq('user_id', user.id)
+          .eq('month', m)
+          .eq('year', y)
+          .maybeSingle();
+
+        if (cached && cached.advice) {
+          return NextResponse.json({ 
+            advice: cached.advice, 
+            cached: true, 
+            updated_at: cached.updated_at 
+          });
+        }
+      } catch (cacheErr) {
+        console.warn('Cache check warning (tabela ai_analyses pode não existir ainda):', cacheErr);
+      }
     }
 
     const rawOpenRouterKey = process.env.OPENROUTER_API_KEY || '';
@@ -26,9 +53,6 @@ export async function GET(req: NextRequest) {
     if (!apiKey) {
       return NextResponse.json({ error: 'Nenhuma chave de API (OPENROUTER_API_KEY ou GEMINI_API_KEY) foi configurada no servidor.' }, { status: 503 });
     }
-
-    const m = parseInt(month, 10);
-    const y = parseInt(year, 10);
     const lastDay = new Date(y, m, 0).getDate();
     const startDate = `${y}-${String(m).padStart(2, '0')}-01`;
     const endDate = `${y}-${String(m).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}T23:59:59.999Z`;
@@ -163,7 +187,24 @@ export async function GET(req: NextRequest) {
       throw new Error(lastErrorMsg || 'Não foi possível obter a resposta da IA. Verifique se a chave de API é válida.');
     }
 
-    return NextResponse.json({ advice: text });
+    const nowIso = new Date().toISOString();
+
+    // 2. Salva ou atualiza a análise no banco para próximos acessos rápidos
+    try {
+      await supabaseServer
+        .from('ai_analyses')
+        .upsert({
+          user_id: user.id,
+          month: m,
+          year: y,
+          advice: text,
+          updated_at: nowIso
+        }, { onConflict: 'user_id,month,year' });
+    } catch (saveErr) {
+      console.warn('Não foi possível gravar na tabela ai_analyses (pode não existir ainda):', saveErr);
+    }
+
+    return NextResponse.json({ advice: text, cached: false, updated_at: nowIso });
   } catch (error: any) {
     console.error('Erro na API de IA (frontend):', error);
     const errMsg = error?.message || String(error);

@@ -3,10 +3,11 @@ import { supabaseServer, verifyAuth } from '@/lib/serverAuth';
 
 const applyDateFilter = (query: any, month: string | null, year: string | null) => {
   if (month && year) {
-    const m = parseInt(month);
-    const y = parseInt(year);
-    const startDate = new Date(y, m - 1, 1).toISOString();
-    const endDate = new Date(y, m, 0, 23, 59, 59, 999).toISOString();
+    const m = parseInt(month, 10);
+    const y = parseInt(year, 10);
+    const lastDay = new Date(y, m, 0).getDate();
+    const startDate = `${y}-${String(m).padStart(2, '0')}-01T00:00:00.000Z`;
+    const endDate = `${y}-${String(m).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}T23:59:59.999Z`;
     return query.gte('date', startDate).lte('date', endDate);
   }
   return query;
@@ -48,15 +49,10 @@ export async function GET(req: NextRequest) {
     }
   });
 
-  const pendingTransactions = data
-    .filter((t: any) => (t.type === 'expense' || t.type === 'reminder') && t.is_paid === false)
-    .sort((a: any, b: any) => new Date(a.date).getTime() - new Date(b.date).getTime());
-
   return NextResponse.json({
     totalIncome,
     totalExpense,
     balance: totalIncome - totalExpense,
-    expensesByCategory,
-    pendingTransactions
+    expensesByCategory
   });
 }

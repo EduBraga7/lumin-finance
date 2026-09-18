@@ -10,9 +10,15 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
   try {
     const { title, amount, type, category, date, is_paid } = await req.json();
 
+    let formattedDate = date;
+    if (typeof date === 'string' && date.trim()) {
+      const cleanDate = date.split('T')[0];
+      formattedDate = `${cleanDate}T12:00:00.000Z`;
+    }
+
     const { data, error } = await supabaseServer
       .from('transactions')
-      .update({ title, amount, type, category, date, is_paid })
+      .update({ title, amount, type, category, date: formattedDate, is_paid })
       .eq('id', id)
       .eq('user_id', user.id)
       .select();

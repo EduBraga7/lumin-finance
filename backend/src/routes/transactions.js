@@ -34,8 +34,11 @@ const requireAuth = (req, res, next) => {
 // Helper para filtro de data
 const applyDateFilter = (query, month, year) => {
   if (month && year) {
-    const startDate = new Date(year, month - 1, 1).toISOString();
-    const endDate = new Date(year, month, 0, 23, 59, 59, 999).toISOString();
+    const m = parseInt(month, 10);
+    const y = parseInt(year, 10);
+    const lastDay = new Date(y, m, 0).getDate();
+    const startDate = `${y}-${String(m).padStart(2, '0')}-01T00:00:00.000Z`;
+    const endDate = `${y}-${String(m).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}T23:59:59.999Z`;
     return query.gte('date', startDate).lte('date', endDate);
   }
   return query;
@@ -73,9 +76,17 @@ router.post('/', requireAuth, async (req, res) => {
     return res.status(400).json({ error: 'Todos os campos obrigatórios devem ser preenchidos.' });
   }
 
-  const baseDateStr = date || new Date().toISOString().split('T')[0];
-  // Convertemos a string (YYYY-MM-DD) adicionando T00:00:00 para evitar bugs de fuso horário
-  const baseDate = new Date(`${baseDateStr}T12:00:00Z`);
+  // Extrai ano, mês e dia da data recebida para evitar qualquer shift de fuso horário
+  let baseDateStr = typeof date === 'string' && date.trim() ? date.split('T')[0] : '';
+  if (!baseDateStr) {
+    const now = new Date();
+    const y = now.getFullYear();
+    const m = String(now.getMonth() + 1).padStart(2, '0');
+    const d = String(now.getDate()).padStart(2, '0');
+    baseDateStr = `${y}-${m}-${d}`;
+  }
+
+  const [baseYear, baseMonth, baseDay] = baseDateStr.split('-').map(Number);
   
   const monthsToRepeat = parseInt(repeat_months) || 1;
   const maxMonths = Math.min(monthsToRepeat, 24); // Limita a 24 meses
@@ -83,15 +94,21 @@ router.post('/', requireAuth, async (req, res) => {
   const insertPayloads = [];
 
   for (let i = 0; i < maxMonths; i++) {
-    const targetDate = new Date(baseDate);
-    targetDate.setUTCMonth(targetDate.getUTCMonth() + i);
+    const targetYear = baseYear + Math.floor((baseMonth - 1 + i) / 12);
+    const targetMonth = ((baseMonth - 1 + i) % 12) + 1;
+    const lastDayOfMonth = new Date(targetYear, targetMonth, 0).getDate();
+    const targetDay = Math.min(baseDay, lastDayOfMonth);
+
+    // Salvamos sempre ao meio-dia UTC (12:00:00Z). No Brasil (UTC-3), isso equivale a 09:00:00 do mesmo dia,
+    // eliminando completamente o risco de cair no dia anterior (21:00) ao converter timestamptz.
+    const formattedDate = `${targetYear}-${String(targetMonth).padStart(2, '0')}-${String(targetDay).padStart(2, '0')}T12:00:00.000Z`;
     
     insertPayloads.push({
       title: title,
       amount,
       type,
       category,
-      date: targetDate.toISOString().split('T')[0],
+      date: formattedDate,
       user_id: req.user.id,
       is_paid: is_paid !== undefined ? is_paid : true
     });
@@ -111,9 +128,15 @@ router.put('/:id', requireAuth, async (req, res) => {
   const { id } = req.params;
   const { title, amount, type, category, date, is_paid } = req.body;
 
+  let formattedDate = date;
+  if (typeof date === 'string' && date.trim()) {
+    const cleanDate = date.split('T')[0];
+    formattedDate = `${cleanDate}T12:00:00.000Z`;
+  }
+
   const { data, error } = await req.supabase
     .from('transactions')
-    .update({ title, amount, type, category, date, is_paid })
+    .update({ title, amount, type, category, date: formattedDate, is_paid })
     .eq('id', id)
     .eq('user_id', req.user.id)
     .select();
@@ -188,16 +211,11 @@ router.get('/dashboard', requireAuth, async (req, res) => {
     }
   });
 
-  const pendingTransactions = data
-    .filter(t => (t.type === 'expense' || t.type === 'reminder') && t.is_paid === false)
-    .sort((a, b) => new Date(a.date) - new Date(b.date));
-
   res.json({
     totalIncome,
     totalExpense,
     balance: totalIncome - totalExpense,
-    expensesByCategory,
-    pendingTransactions
+    expensesByCategory
   });
 });
 

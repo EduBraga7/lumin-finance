@@ -26,16 +26,39 @@ const requireAuth = (req, res, next) => {
 
 router.get('/advisor', requireAuth, async (req, res) => {
   try {
-    const { month, year } = req.query;
+    const { month, year, refresh } = req.query;
     if (!month || !year) return res.status(400).json({ error: 'Mês e ano são obrigatórios.' });
+
+    const m = parseInt(month, 10);
+    const y = parseInt(year, 10);
+
+    // 1. Se não for refresh forçado, verifica se já existe análise no banco para este mês
+    if (refresh !== 'true') {
+      try {
+        const { data: cached } = await supabase
+          .from('ai_analyses')
+          .select('*')
+          .eq('user_id', req.user.id)
+          .eq('month', m)
+          .eq('year', y)
+          .maybeSingle();
+
+        if (cached && cached.advice) {
+          return res.json({ 
+            advice: cached.advice, 
+            cached: true, 
+            updated_at: cached.updated_at 
+          });
+        }
+      } catch (cacheErr) {
+        console.warn('Cache check warning (tabela ai_analyses pode não existir ainda):', cacheErr);
+      }
+    }
 
     const apiKey = process.env.GEMINI_API_KEY;
     if (!apiKey) {
       return res.status(503).json({ error: 'A chave da API do Gemini (GEMINI_API_KEY) não está configurada no servidor.' });
     }
-
-    const m = parseInt(month, 10);
-    const y = parseInt(year, 10);
     const lastDay = new Date(y, m, 0).getDate();
     const startDate = `${y}-${String(m).padStart(2, '0')}-01`;
     const endDate = `${y}-${String(m).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}T23:59:59.999Z`;
@@ -105,7 +128,24 @@ router.get('/advisor', requireAuth, async (req, res) => {
       throw lastError;
     }
 
-    res.json({ advice: text });
+    const nowIso = new Date().toISOString();
+
+    // 2. Salva ou atualiza a análise no banco para os próximos acessos rápidos
+    try {
+      await supabase
+        .from('ai_analyses')
+        .upsert({
+          user_id: req.user.id,
+          month: m,
+          year: y,
+          advice: text,
+          updated_at: nowIso
+        }, { onConflict: 'user_id,month,year' });
+    } catch (saveErr) {
+      console.warn('Não foi possível gravar na tabela ai_analyses (pode não existir ainda):', saveErr);
+    }
+
+    res.json({ advice: text, cached: false, updated_at: nowIso });
 
   } catch (error) {
     console.error("Erro na API de IA (backend):", error);

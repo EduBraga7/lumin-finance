@@ -11,7 +11,10 @@ const months = [
 export default function MonthSelector() {
   const { month, year, setMonth, setYear } = useDateFilter();
 
+  const isMinDate = year <= 2026 && month <= 1;
+
   const handlePrev = () => {
+    if (isMinDate) return;
     if (month === 1) {
       setMonth(12);
       setYear(year - 1);
@@ -31,7 +34,17 @@ export default function MonthSelector() {
 
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', background: 'var(--surface-light)', padding: '0.5rem 1rem', borderRadius: '12px', width: 'fit-content', border: '1px solid var(--border-subtle)' }}>
-      <button onClick={handlePrev} className="btn-icon" style={{ background: 'transparent' }}>
+      <button 
+        onClick={handlePrev} 
+        disabled={isMinDate}
+        className="btn-icon" 
+        style={{ 
+          background: 'transparent', 
+          opacity: isMinDate ? 0.3 : 1, 
+          cursor: isMinDate ? 'not-allowed' : 'pointer' 
+        }}
+        title={isMinDate ? "Data mínima atingida (Janeiro de 2026)" : "Mês anterior"}
+      >
         <ChevronLeft size={20} color="var(--text-secondary)" />
       </button>
       <span style={{ fontSize: '1rem', fontWeight: 600, color: 'var(--text-primary)', minWidth: '120px', textAlign: 'center' }}>

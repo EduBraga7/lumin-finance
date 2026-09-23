@@ -89,6 +89,7 @@ export default function CfoChat() {
 
   // Carrega histórico persistido (do Supabase ou localStorage) ao montar
   useEffect(() => {
+    if (!user) return;
     let ignore = false;
 
     async function loadHistory() {

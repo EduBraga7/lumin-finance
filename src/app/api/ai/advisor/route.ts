@@ -173,8 +173,13 @@ export async function GET(req: NextRequest) {
     let adviceText = localDiag.aiAdviceText || localDiag.summary;
 
     // 4. Chamada de IA Generativa de Alto Nível (Gemini / OpenRouter)
-    const rawOpenRouterKey = process.env.OPENROUTER_API_KEY || '';
-    const rawGeminiKey = process.env.GEMINI_API_KEY || '';
+    const rawOpenRouterKey = process.env.OPENROUTER_API_KEY || process.env.NEXT_PUBLIC_OPENROUTER_API_KEY || '';
+    const rawGeminiKey =
+      process.env.GEMINI_API_KEY ||
+      process.env.GOOGLE_API_KEY ||
+      process.env.GOOGLE_GEMINI_API_KEY ||
+      process.env.NEXT_PUBLIC_GEMINI_API_KEY ||
+      '';
     const openRouterKey = rawOpenRouterKey.trim().replace(/^["']|["']$/g, '');
     const geminiKey = rawGeminiKey.trim().replace(/^["']|["']$/g, '');
     const apiKey = openRouterKey || geminiKey;

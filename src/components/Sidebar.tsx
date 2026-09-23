@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { LayoutDashboard, Receipt, LogOut, BarChart2, Sun, Moon } from 'lucide-react';
+import { LayoutDashboard, Receipt, LogOut, BarChart2, Sun, Moon, Sparkles } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { useTheme } from '@/context/ThemeContext';
 
@@ -29,6 +29,10 @@ export default function Sidebar() {
         <Link href="/reports" className={`nav-link ${pathname === '/reports' ? 'active' : ''}`}>
           <BarChart2 size={20} />
           Relatórios Anuais
+        </Link>
+        <Link href="/ai" className={`nav-link ${pathname === '/ai' ? 'active' : ''}`}>
+          <Sparkles size={20} className="text-accent" />
+          Lumin IA
         </Link>
       </nav>
 

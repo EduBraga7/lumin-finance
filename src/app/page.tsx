@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, Suspense } from 'react';
+import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useDateFilter } from '@/context/DateFilterContext';
 import MonthSelector from '@/components/MonthSelector';
@@ -8,10 +8,6 @@ import { MONTH_NAMES } from '@/constants/dates';
 import { formatCurrency } from '@/utils/formatters';
 import { useDashboard } from '@/hooks/useDashboard';
 import dynamic from 'next/dynamic';
-
-const AiAdvisorCard = dynamic(() => import('@/components/dashboard/AiAdvisorCard'), {
-  loading: () => <div className="glass-card" style={{ padding: '2rem', textAlign: 'center' }}>Carregando IA Advisor...</div>
-});
 
 const CategoryExpenseChart = dynamic(() => import('@/components/dashboard/CategoryExpenseChart'), {
   loading: () => <div className="glass-card" style={{ padding: '2rem', textAlign: 'center' }}>Carregando gráficos...</div>
@@ -28,12 +24,9 @@ export default function Home() {
     dashboard,
     monthTransactions,
     loading,
-    aiDiagnosis,
-    loadingAi,
     pieData,
     categoryRanking,
-    refreshAi,
-  } = useDashboard(month, year);
+  } = useDashboard(month, year, false);
 
   const monthName = MONTH_NAMES[month - 1];
 
@@ -80,13 +73,6 @@ export default function Home() {
           </div>
         </div>
       )}
-
-      {/* Lumin AI Advisor */}
-      <AiAdvisorCard
-        aiDiagnosis={aiDiagnosis}
-        loadingAi={loadingAi}
-        onRefresh={refreshAi}
-      />
 
       {/* Gráfico de Despesas por Categoria e Ranking */}
       <CategoryExpenseChart

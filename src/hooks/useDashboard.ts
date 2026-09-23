@@ -9,7 +9,7 @@ import { DEMO_DASHBOARD, DEMO_TRANSACTIONS, DEMO_AI_DIAGNOSIS } from '@/utils/de
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || '';
 
-export function useDashboard(month: number, year: number) {
+export function useDashboard(month: number, year: number, enableAi = true) {
   const { user, isDemoMode } = useAuth();
   const [dashboard, setDashboard] = useState<DashboardData | null>(null);
   const [monthTransactions, setMonthTransactions] = useState<Transaction[]>([]);
@@ -118,7 +118,7 @@ export function useDashboard(month: number, year: number) {
         setMonthTransactions(Array.isArray(txData) ? txData : []);
       }
 
-      if (dashData) {
+      if (dashData && enableAi) {
         fetchAiDiagnosis(dashData);
       }
     } catch (err) {
@@ -126,7 +126,7 @@ export function useDashboard(month: number, year: number) {
     } finally {
       setLoading(false);
     }
-  }, [user, isDemoMode, month, year, fetchAiDiagnosis]);
+  }, [user, isDemoMode, month, year, enableAi, fetchAiDiagnosis]);
 
   useEffect(() => {
     let ignore = false;

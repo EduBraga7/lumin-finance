@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useState, useEffect } from 'react';
-import { LayoutDashboard, Receipt, BarChart2, User, LogOut, Sun, Moon, X } from 'lucide-react';
+import { LayoutDashboard, Receipt, BarChart2, User, LogOut, Sun, Moon, X, Sparkles } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 
 export default function BottomNav() {
@@ -42,6 +42,11 @@ export default function BottomNav() {
         <Link href="/transactions" className={`bottom-nav-item ${pathname === '/transactions' ? 'active' : ''}`}>
           <Receipt size={24} />
           <span>Extrato</span>
+        </Link>
+        
+        <Link href="/ai" className={`bottom-nav-item ${pathname === '/ai' ? 'active' : ''}`}>
+          <Sparkles size={24} className={pathname === '/ai' ? 'text-accent' : ''} />
+          <span>Lumin IA</span>
         </Link>
         
         <Link href="/reports" className={`bottom-nav-item ${pathname === '/reports' ? 'active' : ''}`}>

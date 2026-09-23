@@ -88,9 +88,11 @@ function TransactionsContent() {
 
   const handleModalSubmit = async (payload: TransactionPayload, editingId: string | null) => {
     if (editingId) {
-      await updateTransaction(editingId, payload);
+      const ok = await updateTransaction(editingId, payload);
+      return { success: ok, error: ok ? undefined : 'Falha ao atualizar lançamento' };
     } else {
-      await createTransaction(payload);
+      const res = await createTransaction(payload);
+      return res;
     }
   };
 

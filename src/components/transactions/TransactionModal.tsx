@@ -13,7 +13,7 @@ interface TransactionModalProps {
   currentMonth: number;
   currentYear: number;
   onClose: () => void;
-  onSubmit: (payload: TransactionPayload, editingId: string | null) => Promise<void>;
+  onSubmit: (payload: TransactionPayload, editingId: string | null) => Promise<{ success: boolean; error?: string } | void>;
   onNavigateToMonth?: (m: number, y: number) => void;
 }
 
@@ -34,6 +34,7 @@ export default function TransactionModal({
   const [date, setDate] = useState('');
   const [repeat, setRepeat] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const getInitialDateForMonth = useCallback((targetMonth: number, targetYear: number) => {
     const now = new Date();
@@ -71,6 +72,7 @@ export default function TransactionModal({
         setDate(getInitialDateForMonth(currentMonth, currentYear));
         setRepeat(false);
       }
+      setErrorMessage(null);
     };
     syncForm();
   }, [isOpen, editingTransaction, initialValues, currentMonth, currentYear, getInitialDateForMonth]);
@@ -94,6 +96,7 @@ export default function TransactionModal({
     if (!title || !amount || !date) return;
 
     setIsSubmitting(true);
+    setErrorMessage(null);
     const payload: TransactionPayload = {
       title,
       amount: parseFloat(amount),
@@ -104,8 +107,13 @@ export default function TransactionModal({
       repeat_months: repeat && !editingTransaction ? 12 : 1,
     };
 
-    await onSubmit(payload, editingTransaction ? editingTransaction.id : null);
+    const res = await onSubmit(payload, editingTransaction ? editingTransaction.id : null);
     setIsSubmitting(false);
+
+    if (res && !res.success) {
+      setErrorMessage(res.error || 'Erro ao salvar transação. Tente novamente.');
+      return;
+    }
 
     if (isDifferentMonth && selectedDateMonth && selectedDateYear && onNavigateToMonth) {
       onNavigateToMonth(selectedDateMonth, selectedDateYear);
@@ -151,6 +159,24 @@ export default function TransactionModal({
             <X size={22} />
           </button>
         </div>
+
+        {errorMessage && (
+          <div style={{
+            background: 'rgba(239, 68, 68, 0.12)',
+            border: '1px solid rgba(239, 68, 68, 0.4)',
+            color: '#f87171',
+            borderRadius: '8px',
+            padding: '0.75rem 1rem',
+            marginBottom: '1.25rem',
+            fontSize: '0.85rem',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.5rem',
+          }}>
+            <AlertCircle size={18} style={{ flexShrink: 0 }} />
+            <span>{errorMessage}</span>
+          </div>
+        )}
 
         <form onSubmit={handleSubmit}>
           {/* Seletor de Tipo */}

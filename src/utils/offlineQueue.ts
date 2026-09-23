@@ -103,9 +103,15 @@ export async function syncOfflineQueue(
         repeat_months: item.repeat_months || 1
       };
 
+      const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+      if (typeof document !== 'undefined') {
+        const csrfMatch = document.cookie.match(/lumin_csrf_token=([^;]+)/);
+        if (csrfMatch) headers['x-csrf-token'] = csrfMatch[1];
+      }
+
       const res = await fetch(`${API_URL}/api/transactions`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         credentials: 'include',
         body: JSON.stringify(payload)
       });

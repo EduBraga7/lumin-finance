@@ -13,6 +13,12 @@ import { DEMO_TRANSACTIONS } from '@/utils/demoData';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || '';
 
+function getCsrfHeader(): Record<string, string> {
+  if (typeof document === 'undefined') return {};
+  const match = document.cookie.match(/lumin_csrf_token=([^;]+)/);
+  return match ? { 'x-csrf-token': match[1] } : {};
+}
+
 export function useTransactions(month: number, year: number) {
   const { user, isDemoMode } = useAuth();
   const [transactions, setTransactions] = useState<Transaction[]>([]);
@@ -63,7 +69,7 @@ export function useTransactions(month: number, year: number) {
     try {
       setLoading(true);
       const res = await fetch(
-        `${API_URL}/api/transactions?month=${month}&year=${year}&status=paid`,
+        `${API_URL}/api/transactions?month=${month}&year=${year}`,
         { credentials: 'include' }
       );
 
@@ -137,17 +143,20 @@ export function useTransactions(month: number, year: number) {
       try {
         const res = await fetch(`${API_URL}/api/transactions`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: {
+            'Content-Type': 'application/json',
+            ...getCsrfHeader(),
+          },
           credentials: 'include',
           body: JSON.stringify(payload),
         });
 
         if (res.ok) {
-          fetchTransactions();
+          await fetchTransactions();
           return { success: true };
         }
 
-        const errData = await res.json();
+        const errData = await res.json().catch(() => ({}));
         return { success: false, error: errData.error || 'Falha ao salvar transação' };
       } catch (err: unknown) {
         // Fallback para fila offline se a conexão falhar durante o envio
@@ -178,13 +187,16 @@ export function useTransactions(month: number, year: number) {
       try {
         const res = await fetch(`${API_URL}/api/transactions/${id}`, {
           method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
+          headers: {
+            'Content-Type': 'application/json',
+            ...getCsrfHeader(),
+          },
           credentials: 'include',
           body: JSON.stringify(payload),
         });
 
         if (res.ok) {
-          fetchTransactions();
+          await fetchTransactions();
           return true;
         }
         return false;
@@ -201,6 +213,9 @@ export function useTransactions(month: number, year: number) {
       try {
         const res = await fetch(`${API_URL}/api/transactions/${id}`, {
           method: 'DELETE',
+          headers: {
+            ...getCsrfHeader(),
+          },
           credentials: 'include',
         });
 

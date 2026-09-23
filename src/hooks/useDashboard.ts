@@ -101,7 +101,7 @@ export function useDashboard(month: number, year: number) {
         fetch(`${API_URL}/api/transactions/dashboard?month=${month}&year=${year}`, {
           credentials: 'include',
         }),
-        fetch(`${API_URL}/api/transactions?month=${month}&year=${year}&status=paid`, {
+        fetch(`${API_URL}/api/transactions?month=${month}&year=${year}`, {
           credentials: 'include',
         }),
       ]);

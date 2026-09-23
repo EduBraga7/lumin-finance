@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { supabaseServer, getJwtSecret } from '@/lib/serverAuth';
+import { generateCsrfToken, setCsrfCookie } from '@/lib/csrf';
 
 export async function POST(req: NextRequest) {
   try {
@@ -46,8 +47,12 @@ export async function POST(req: NextRequest) {
     // 4. Gerar JWT
     const token = jwt.sign({ id: data.id, username: data.username }, jwtSecret, { expiresIn: '7d' });
 
-    // 5. Retornar dados com Cookie HttpOnly seguro
-    const response = NextResponse.json({ user: { id: data.id, username: data.username }, token }, { status: 201 });
+    // 5. Generate and set CSRF token
+    const csrfToken = generateCsrfToken();
+    await setCsrfCookie(csrfToken);
+
+    // 6. Retornar dados com Cookie HttpOnly seguro
+    const response = NextResponse.json({ user: { id: data.id, username: data.username }, token, csrfToken }, { status: 201 });
     response.cookies.set('lumin_token', token, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',

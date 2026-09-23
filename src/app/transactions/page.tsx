@@ -197,6 +197,7 @@ function TransactionsContent() {
         initialValues={modalInitialValues}
         currentMonth={month}
         currentYear={year}
+        existingTransactions={transactions}
         onClose={() => setIsModalOpen(false)}
         onSubmit={handleModalSubmit}
         onNavigateToMonth={(m, y) => {

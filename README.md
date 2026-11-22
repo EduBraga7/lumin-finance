@@ -21,6 +21,29 @@ O **Lumin Finance** é uma plataforma full-stack moderna e completa de gestão o
 
 ---
 
+## 📸 Capturas de Tela
+
+<p align="center">
+  <img src="docs/screenshots/01-dashboard.png" alt="Lumin Finance — Dashboard Executivo e Gastos por Categoria" width="100%" />
+</p>
+
+<table>
+  <tr>
+    <td width="50%">
+      <img src="docs/screenshots/02-relatorios.png" alt="Relatório Anual Consolidado e Fluxo de Caixa" width="100%" />
+    </td>
+    <td width="50%">
+      <img src="docs/screenshots/03-lumin-ia.png" alt="Lumin IA — Copiloto CFO e Diagnóstico Financeiro" width="100%" />
+    </td>
+  </tr>
+</table>
+
+<p align="center">
+  <img src="docs/screenshots/04-login.png" alt="Tela de Login com Acesso ao Modo Demo" width="100%" />
+</p>
+
+---
+
 ## ✨ Funcionalidades Principais
 
 ### 1. 📊 Dashboard Executivo e Financeiro
